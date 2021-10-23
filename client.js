@@ -32,25 +32,31 @@ const controller = new Controller.Controller;
 const game = new(require('./js/game.js'));
 
 function updateMenu() {
-	if (controller.currentMenu == 'main') {
-		if (controller.enter && controller.menuOption == 1) {
-			// controller.currentMenu = controller.menus[controller.menuOption];
-			// display.menu.animateSelection(controller.menuOption);
-			// updateMenu();
-			switchTo('online');
-			return;
-		}
-		const prevMenuOption = controller.menuOption;
-		controller.handleMenu();
-		if (prevMenuOption != controller.menuOption)
-			display.menu.drawMenuDynamic(controller.menuOption, controller.prevMenuOption);
-	} else if (controller.currentMenu == 'online') {
+	if (controller.enter && controller.menuOption == 1) {
+		switchTo('online');
+		return;
 	}
+	const prevMenuOption = controller.menuOption;
+	controller.handleMenu();
+	if (prevMenuOption != controller.menuOption)
+		display.menu.drawMenuDynamic(controller.menuOption, controller.prevMenuOption);
 }
 
+let prevAllFieldsFilled = false;
 function updateOnline() {
+	const prevOnlineOption = controller.onlineOption;
 	controller.handleOnline();
-	display.menu.debugOnlineBuffer(controller.onlineBuffer);
+	// display.menu.debugOnlineBuffer(controller.onlineBuffer, controller.textChange);
+	if (prevOnlineOption != controller.onlineOption)
+		display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
+	if (controller.textChange != null) {
+		display.menu.drawOnlineBuffer(controller.textChange);
+		if (prevAllFieldsFilled != controller.allFieldsFilled)
+			display.menu.toggleConnectButton(controller.allFieldsFilled);
+		prevAllFieldsFilled = controller.allFieldsFilled;
+	} else if (controller.enter && controller.onlineOption == controller.onlineBuffer.length && controller.allFieldsFilled) {
+		display.menu.drawOnlineSelection(controller.onlineOption);
+	}
 }
 
 let screenUpdates = {
@@ -62,7 +68,7 @@ let screen = 'menu';
 let update = screenUpdates[screen];
 
 function clearScreen(name) {
-	if (name == 'menu') display.menu.animateSelection(controller.menuOption);
+	if (name == 'menu') display.menu.drawMenuSelection(controller.menuOption);
 	else if (name == 'game') display.game.clear(game.piles, controller.buffer);//display.init(); //display.clearGameBoard();
 	else if (name == 'settings') display.settings.clear();
 }
@@ -74,6 +80,7 @@ function startScreen(name) {
 		display.menu.drawMenuStatic(controller.menuOption);
 		// display.menu.drawDynamic(controller.menuOption);
 	} else if (name == 'online') {
+		const wait = setTimeout(() => display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer), display.menu.animationDuration + 200);
 	} else if (name == 'game') {
 	}
 }
@@ -107,7 +114,9 @@ process.stdin.on('keypress', function(chunk, key) {
 function redrawScreen(name) {
 	display.init();
 	display.resize();
-	if (name == 'menu') {
+	display.menu.setSize();
+	if (name == 'online') {
+		display.menu.drawLogo();
 	}
 	startScreen(name);
 }

@@ -1,6 +1,6 @@
 const Controller = function() {
 	this.update = function(key, shift) {
-		this.esc = this.left = this.right = this.up = this.down = this.enter = false;
+		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
 		this.backspace = this.alphaNum = false;
 		switch (key) {
 			case "escape" : this.esc = true; break;
@@ -8,6 +8,7 @@ const Controller = function() {
 			case "right" : this.right = true; break;
 			case "up" : this.up = true; break;
 			case "down" : this.down = true; break;
+			case "tab" : this.tab = true; break;
 			case "return" : this.enter = true; break;
 			case "backspace" : this.backspace = true; break;
 		}
@@ -37,15 +38,44 @@ const Controller = function() {
 		}
 	}
 
-	this.onlineBuffer = {
-		address: [],
-		name: [],
-	};
-	let activeOnlineField = 'address';
+	this.onlineStage = 0;
+	// this.onlineBuffer = [
+	// 	{ name: 'Server Address', content: [] },
+	// 	{ name: 'Your Name', content: [] },
+	// ];
+	this.onlineBuffer = [[],[]];
+	this.onlineOption = 0;
+	this.allFieldsFilled = false;
+	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
 	this.handleOnline = function() {
-		if (activeOnlineField != 'none') {
-			if (this.alphaNum) this.onlineBuffer[activeOnlineField].push(this.alphaNum);
-			else if (this.backspace) this.onlineBuffer[activeOnlineField].pop();
+		if (this.onlineStage == 0) {
+			this.textChange = null;
+			if (this.onlineOption < this.onlineBuffer.length) {
+				const charArray = this.onlineBuffer[this.onlineOption];
+				if (this.alphaNum) {
+					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
+					charArray.push(this.alphaNum);
+				}
+				else if (this.backspace && charArray.length > 0) {
+					this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
+					charArray.pop();
+				}
+				this.allFieldsFilled = true;
+				for (let textArray of this.onlineBuffer) {
+					if (textArray.length == 0) {
+						this.allFieldsFilled = false;
+						break;
+					}
+				}
+				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
+				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
+			}
+			if (this.up)
+				if (this.onlineOption == 0) this.onlineOption = lastOnlineOptionsIndex;
+				else this.onlineOption--;
+			else if (this.down || this.tab)
+				if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
+				else this.onlineOption++;
 		}
 	}
 
