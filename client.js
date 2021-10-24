@@ -11,7 +11,14 @@ client.log = function(text) {
 	client.write(JSON.stringify(obj));
 }
 client.on('error', function(error) {
-	console.log(error);
+	// if trying to connect to server lobby
+	if (controller.onlineStage == 1 && error.code == 'ETIMEDOUT') {
+		display.menu.showConnectionError(error.address, error.port.toString());
+		display.menu.clearConnectionLoading();
+		controller.onlineOption = 0;
+		display.menu.drawOnlineDynamic(0, controller.onlineBuffer.length, controller.onlineBuffer);
+		controller.onlineStage = 0;
+	}
 });
 /*
 // Add a 'data' event handler for the client socket
@@ -53,20 +60,27 @@ function updateOnline() {
 	controller.handleOnline();
 	// display.menu.debugOnlineBuffer(controller.onlineBuffer, controller.textChange);
 	if (controller.onlineStage == 0) {
+		// Moving through menu
 		if (prevOnlineOption != controller.onlineOption)
 			display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
+		// Text update
 		if (controller.textChange != null) {
 			display.menu.drawOnlineBuffer(controller.textChange);
+			// Form validation for connect button
 			if (prevAllFieldsFilled != controller.allFieldsFilled)
 				display.menu.toggleConnectButton(controller.allFieldsFilled, true);
 			prevAllFieldsFilled = controller.allFieldsFilled;
+		// Connect button pressed
 		} else if (controller.enter && controller.onlineOption == controller.onlineBuffer.length && controller.allFieldsFilled) {
 			display.menu.drawOnlineSelection(controller.onlineOption);
 			display.menu.drawConnectionLoading();
+			display.menu.hideConnectionError();
 			controller.onlineStage = 1;
 			// client.connect(port, host, () => {
 			client.connect(port, '123.3.2.3', () => {
 				client.log('Sup bitch');
+				display.menu.clearConnectionLoading();
+				// controller.onlineStage = 2;
 			});
 		}
 	} else if (controller.onlineStage == 1) {

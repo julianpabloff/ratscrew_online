@@ -295,6 +295,20 @@ const MenuDisplay = function(d) {
 			}
 		}
 		this.clearCursor();
+		this.hideConnectionError();
+	}
+
+	let connectionError = '';
+	this.showConnectionError = function(address, port) {
+		connectionError = 'Error connecting to ' + address + ':' + port;
+		d.setFg('red');
+		d.draw(connectionError, logoX, optionsY + 8);
+	}
+	this.hideConnectionError = function() {
+		const errorLength = connectionError.length;
+		if (errorLength > 0) {
+			d.draw(' '.repeat(errorLength), logoX, optionsY + 8);
+		} else return;
 	}
 	this.debugOnlineBuffer = function(buffer, textChange) {
 		d.setFg('white');

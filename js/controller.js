@@ -1,7 +1,7 @@
 const Controller = function() {
 	this.update = function(key, shift) {
 		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
-		this.backspace = this.alphaNum = false;
+		this.space = this.backspace = this.alphaNum = false;
 		switch (key) {
 			case "escape" : this.esc = true; break;
 			case "left" : this.left = true; break;
@@ -10,6 +10,7 @@ const Controller = function() {
 			case "down" : this.down = true; break;
 			case "tab" : this.tab = true; break;
 			case "return" : this.enter = true; break;
+			case "space" : this.space = true; break;
 			case "backspace" : this.backspace = true; break;
 		}
 		if (key != undefined && key.length == 1) {
@@ -55,8 +56,10 @@ const Controller = function() {
 				if (this.alphaNum) {
 					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
 					charArray.push(this.alphaNum);
-				}
-				else if (this.backspace && charArray.length > 0) {
+				} else if (this.space) {
+					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: ' '};
+					charArray.push(' ');
+				}else if (this.backspace && charArray.length > 0) {
 					this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
 					charArray.pop();
 				}
