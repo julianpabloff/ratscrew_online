@@ -1,15 +1,19 @@
-var net = require('net');
-var host = '127.0.0.1';
-var port = 6969;
+const net = require('net');
+const host = '127.0.0.1';
+const port = 6969;
 
-/*
-var client = new net.Socket();
-client.connect(port, host, function() {
-	console.log('CONNECTED TO: ' + host + ':' + port);
-	// Write a message to the socket as soon as the client is connected, the server will receive it as message from the client
-	client.write('I am Chuck Norris!');
+const client = new net.Socket();
+client.log = function(text) {
+	const obj = {
+		text: text,
+		time: Date.now()
+	};
+	client.write(JSON.stringify(obj));
+}
+client.on('error', function(error) {
+	console.log(error);
 });
-
+/*
 // Add a 'data' event handler for the client socket
 // data is what the server sent to this socket
 client.on('data', function(data) {
@@ -44,18 +48,32 @@ function updateMenu() {
 
 let prevAllFieldsFilled = false;
 function updateOnline() {
+	if (controller.esc) switchTo('menu');
 	const prevOnlineOption = controller.onlineOption;
 	controller.handleOnline();
 	// display.menu.debugOnlineBuffer(controller.onlineBuffer, controller.textChange);
-	if (prevOnlineOption != controller.onlineOption)
-		display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
-	if (controller.textChange != null) {
-		display.menu.drawOnlineBuffer(controller.textChange);
-		if (prevAllFieldsFilled != controller.allFieldsFilled)
-			display.menu.toggleConnectButton(controller.allFieldsFilled);
-		prevAllFieldsFilled = controller.allFieldsFilled;
-	} else if (controller.enter && controller.onlineOption == controller.onlineBuffer.length && controller.allFieldsFilled) {
-		display.menu.drawOnlineSelection(controller.onlineOption);
+	if (controller.onlineStage == 0) {
+		if (prevOnlineOption != controller.onlineOption)
+			display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
+		if (controller.textChange != null) {
+			display.menu.drawOnlineBuffer(controller.textChange);
+			if (prevAllFieldsFilled != controller.allFieldsFilled)
+				display.menu.toggleConnectButton(controller.allFieldsFilled, true);
+			prevAllFieldsFilled = controller.allFieldsFilled;
+		} else if (controller.enter && controller.onlineOption == controller.onlineBuffer.length && controller.allFieldsFilled) {
+			display.menu.drawOnlineSelection(controller.onlineOption);
+			display.menu.drawConnectionLoading();
+			controller.onlineStage = 1;
+			// client.connect(port, host, () => {
+			client.connect(port, '123.3.2.3', () => {
+				client.log('Sup bitch');
+			});
+		}
+	} else if (controller.onlineStage == 1) {
+		if (controller.tab) {
+			display.menu.clearConnectionLoading();
+			client.destroy();
+		}
 	}
 }
 
@@ -69,30 +87,35 @@ let update = screenUpdates[screen];
 
 function clearScreen(name) {
 	if (name == 'menu') display.menu.drawMenuSelection(controller.menuOption);
+	else if (name == 'online') display.menu.clearOnline(controller.onlineOption, controller.onlineBuffer);
 	else if (name == 'game') display.game.clear(game.piles, controller.buffer);//display.init(); //display.clearGameBoard();
 	else if (name == 'settings') display.settings.clear();
 }
 
-function startScreen(name) {
+function startScreen(name, prevName = 'none') {
 	if (name == 'menu') {
 		display.menu.setSize();
-		display.menu.drawLogo();
 		display.menu.drawMenuStatic(controller.menuOption);
 		// display.menu.drawDynamic(controller.menuOption);
 	} else if (name == 'online') {
-		const wait = setTimeout(() => display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer), display.menu.animationDuration + 200);
+		if (prevName == 'menu') {
+			const wait = setTimeout(() => display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled), display.menu.animationDuration + 200);
+			controller.onlineOption = 0;
+		}
+		else display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled);
 	} else if (name == 'game') {
 	}
 }
 
 function switchTo(name) {
 	clearScreen(screen);
+	startScreen(name, screen);
 	screen = name;
 	update = screenUpdates[name];
-	startScreen(name);
 }
 
 display.init();
+display.menu.drawLogo();
 startScreen('menu');
 
 let keypress = require('keypress');
@@ -102,13 +125,14 @@ process.stdin.setRawMode(true);
 process.stdin.on('keypress', function(chunk, key) {
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
-    update();
-	// if (game.players.length > 0) controller.updatePlayerControls(game.players, keyPressed);
-	// updateDynamic();
-	if (controller.esc) {
+	if (controller.esc && screen == 'menu') {
+		client.destroy();
 		display.exit();
 		process.exit();
 	}
+    update();
+	// if (game.players.length > 0) controller.updatePlayerControls(game.players, keyPressed);
+	// updateDynamic();
 });
 
 function redrawScreen(name) {
@@ -117,8 +141,10 @@ function redrawScreen(name) {
 	display.menu.setSize();
 	if (name == 'online') {
 		display.menu.drawLogo();
+		display.menu.clearCursor();
+		// display.menu.clearOnline(controller.onlineOption, controller.onlineBuffer);
 	}
-	startScreen(name);
+	startScreen(name, name);
 }
 
 let rows = process.stdout.rows;

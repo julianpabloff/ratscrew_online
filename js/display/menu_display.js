@@ -147,7 +147,7 @@ const MenuDisplay = function(d) {
 	// ONLINE //
 
 	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
-	let cursor = { x: 5, y: 40, visible: false, active: true};
+	let cursor = { x: 0, y: 0, visible: false, active: true};
 	let cursorBlink;
 	function moveCursor(x, y) {
 		d.draw(' ', cursor.x, cursor.y);
@@ -158,6 +158,11 @@ const MenuDisplay = function(d) {
 			d.draw('█', x, y);
 		}
 	}
+	this.clearCursor = function() {
+		clearInterval(cursorBlink);
+		d.draw(' ', cursor.x, cursor.y);
+		cursor.active = false;
+	}
 	function drawBufferContnet(contentArray, x, y, selected) {
 		stdout.cursorTo(x, y);
 		if (selected) d.setFg('red');
@@ -167,7 +172,8 @@ const MenuDisplay = function(d) {
 			if (!selected) stdout.write('...');
 			else stdout.write('   ');
 	}
-	this.drawOnlineStatic = function(onlineOption, onlineBuffer) {
+	this.drawOnlineStatic = function(onlineOption, onlineBuffer, showConnect) {
+		cursor.active = true;
 		cursorBlink = setInterval(() => {
 			cursor.visible = !cursor.visible;
 			if (cursor.visible && cursor.active) {
@@ -190,7 +196,9 @@ const MenuDisplay = function(d) {
 			d.draw(option, logoX, y);
 			drawBufferContnet(onlineBuffer[i], logoX, y + 1, (i == onlineOption));
 		}
-		moveCursor(logoX + onlineBuffer[onlineOption].length, selectedY + 1);
+		if (onlineOption < onlineBuffer.length)
+			moveCursor(logoX + onlineBuffer[onlineOption].length, selectedY + 1);
+		if (showConnect) this.toggleConnectButton(true, false);
 	}
 	this.drawOnlineDynamic = function(option, prevOption, onlineBuffer) {
 		const y = optionsY + 3 * option;
@@ -225,17 +233,68 @@ const MenuDisplay = function(d) {
 			moveCursor(cursor.x - 1, cursor.y);
 		}
 	}
-	this.toggleConnectButton = function(show) {
+	this.toggleConnectButton = function(show, animate) {
 		if (show) {
 			d.setFg('cyan');
-			// d.draw('CONNECT', logoX, optionsY + 6);
-			dissolve(7, logoX, optionsY + 6, 200, 'CONNECT', 'cyan');
+			if (animate) dissolve(7, logoX, optionsY + 6, 200, 'CONNECT', 'cyan');
+			else d.draw('CONNECT', logoX, optionsY + 6);
 		} else
-			d.draw('       ', logoX, optionsY + 6);
-			// dissolve(7, logoX, optionsY + 6, 200);
+			if (animate) dissolve(7, logoX, optionsY + 6, 200);
+			else d.draw('       ', logoX, optionsY + 6);
 	}
 	this.drawOnlineSelection = function(onlineOption) {
 		animateSelection(onlineOptions[onlineOption], logoX, optionsY + 3 * onlineOption, 250);
+	}
+	let loadingDots = [];
+	let dotObjects = [];
+	let loadingDotsActive = false;
+	this.drawConnectionLoading = function() {
+		loadingDotsActive = true;
+		let increment = 0;
+		function drawLoadingDot(x, y, draw) {
+			d.setFg('red');
+			const char = draw ? '.' : ' ';
+			d.draw(char, x, y);
+		}
+		function makeLoadingDot() {
+			if (increment == 3 || !loadingDotsActive) clearInterval(makeLoadingDots);
+			else {
+				const x = logoX + increment;
+				const y = optionsY + 6;
+				drawLoadingDot(x, y, true);
+				dotObjects.push({ x: x, y: y, visible: true, active: true });
+				const index = increment;
+				let loadingDot = setInterval(() => {
+					let dot = dotObjects[index];
+					dot.visible = !dot.visible;
+					drawLoadingDot(dot.x, dot.y, (dot.visible && loadingDotsActive));
+				}, 1500);
+				loadingDots.push(loadingDot);
+				increment++;
+			}
+		}
+		const makeLoadingDots = setInterval(makeLoadingDot, 500);
+	}
+	this.clearConnectionLoading = function() {
+		loadingDotsActive = false;
+		dotObjects = [];
+		for (dotLoop of loadingDots) clearInterval(dotLoop);
+		d.draw('   ', logoX, optionsY + 6);
+	}
+
+	this.clearOnline = function(onlineOption, onlineBuffer) {
+		for (let i = 0; i < onlineOptions.length; i++) {
+			const option = onlineOptions[i];
+			const y = optionsY + 3 * i;
+			if (i == onlineOption) d.draw(' '.repeat(option.length + 2), logoX - 2, y);
+			else d.draw(' '.repeat(option.length), logoX, y);
+			if (i < onlineBuffer.length) {
+				const bufferLength = onlineBuffer[i].length;
+				const bufferClear = ' '.repeat(bufferLength > 0 ? bufferLength : 3);
+				d.draw(bufferClear, logoX, y + 1);
+			}
+		}
+		this.clearCursor();
 	}
 	this.debugOnlineBuffer = function(buffer, textChange) {
 		d.setFg('white');

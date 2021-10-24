@@ -76,6 +76,7 @@ const Controller = function() {
 			else if (this.down || this.tab)
 				if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
 				else this.onlineOption++;
+		} else if (this.onlineStage == 1) {
 		}
 	}
 

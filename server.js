@@ -3,19 +3,22 @@ const net = require('net');
 const host = '127.0.0.1';
 const port = 6969;
 
-net.createServer(function(sock) {
+net.createServer(function(socket) {
 	// We have a connection - a socket object is assigned to the connection automatically
-	console.log('CONNECTED: ' + sock.remoteAddress +':'+ sock.remotePort);
+	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
 	// Add a 'data' event handler to this instance of socket
-	sock.on('data', function(data) {
-		console.log('DATA ' + sock.remoteAddress + ': ' + data);
+	socket.on('data', function(data) {
+		console.log('DATA ' + socket.remoteAddress + ': ' + data);
 		// Write the data back to the socket, the client will receive it as data from the server
-		sock.write('You said "' + data + '"');
+		// socket.write('You said "' + data + '"');
+		let json = JSON.parse(data);
+		let delta = Date.now() - json.time;
+		socket.write('PING: ' + delta.toString());
 	});
 	// Add a 'close' event handler to this instance of socket
-	sock.on('close', function(data) {
-	console.log('CLOSED: ' + sock.remoteAddress +' '+ sock.remotePort);
+	socket.on('close', function(data) {
+	console.log('CLOSED: ' + socket.remoteAddress +' '+ socket.remotePort);
 	});
-}).listen(port, host);
+}).listen(port, host)
 
 console.log('Server listening on ' + host +':'+ port);
