@@ -1,4 +1,5 @@
 const net = require('net');
+const crypto = require('crypto');
 // const host = '127.0.0.1';
 const host = '192.168.0.106';
 const port = 6969;
@@ -7,6 +8,7 @@ const port = 6969;
 const socket = new net.Socket();
 function sendEvent(eventName, data) {
 	let json = {eventName: eventName, data: data};
+	serverResponding = false;
 	socket.write(JSON.stringify(json));
 }
 async function request(name, data) {
@@ -17,7 +19,9 @@ async function request(name, data) {
 		});
 	});
 }
+let serverResponding = false;
 socket.on('data', function(data) {
+	serverResponding = true;
 	let json = JSON.parse(data);
 	socket.emit(json.eventName, json.data);
 });
@@ -53,7 +57,8 @@ function displayConnectionError(message) {
 
 let connectionCancelled = false;
 let playerName = '';
-let hash = Math.floor(Math.random() * 69420);
+const hash = crypto.randomBytes(32);
+// const hash = buffer.toString('hex');
 socket.on('connect', () => {
 	if (connectionCancelled) socket.destroy();
 	else if (screen == 'online') {
@@ -62,15 +67,19 @@ socket.on('connect', () => {
 			hash: hash
 		}
 		const start = Date.now();
-		request('connection', playerData).then(lobby => {
+		request('connection', playerData).then(() => {
 			const end = Date.now();
 			const ping = Math.floor((end - start) / 2);
 			display.menu.clearConnectionLoading(display.connectionMessageStage != null);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
-			display.menu.drawLobbyStatic(lobby, ping);
+			// display.menu.drawLobbyStatic(lobby, ping);
 			controller.onlineStage = 2;
 		});
 	}
+});
+socket.on('lobby', lobby => {
+	process.stdout.cursorTo(1,1);
+	console.log(lobby);
 });
 
 /*
@@ -80,10 +89,17 @@ socket.on('close', function() {
 */
 
 // Server Functions
-async function ping() {
+let pinging = false;
+let ping = 0;
+async function getPing() {
+	if (pinging) {
+		return ping;
+	}
+	pinging = true;
 	const start = Date.now();
 	await request('ping');
 	const end = Date.now();
+	pinging = false;
 	return Math.floor((end - start) / 2);
 }
 
@@ -159,9 +175,13 @@ function updateOnline() {
 			controller.onlineStage = 0;
 			controller.onlineOption = 0;
 			display.menu.drawOnlineDynamic(0, 2, controller.onlineBuffer);
+			sendEvent('disconnect');
 			socket.destroy();
 		} else if (controller.tab) {
-			ping().then((ping) => console.log(ping));
+			getPing().then((ping) => {
+				process.stdout.cursorTo(1, 10);
+				console.log(ping);
+			});
 		}
 	}
 }
