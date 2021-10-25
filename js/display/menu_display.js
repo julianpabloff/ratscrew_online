@@ -173,7 +173,6 @@ const MenuDisplay = function(d) {
 			else stdout.write('   ');
 	}
 	this.drawOnlineStatic = function(onlineOption, onlineBuffer, showConnect) {
-		cursor.active = true;
 		cursorBlink = setInterval(() => {
 			cursor.visible = !cursor.visible;
 			if (cursor.visible && cursor.active) {
@@ -189,14 +188,13 @@ const MenuDisplay = function(d) {
 			if (i == onlineOption) {
 				d.setFg('red');
 				d.draw('>', logoX - 2, selectedY);
-			}
-			else {
+			} else
 				d.setFg('white');
-			}
 			d.draw(option, logoX, y);
 			drawBufferContnet(onlineBuffer[i], logoX, y + 1, (i == onlineOption));
 		}
 		if (onlineOption < onlineBuffer.length)
+			cursor.active = true;
 			moveCursor(logoX + onlineBuffer[onlineOption].length, selectedY + 1);
 		if (showConnect) this.toggleConnectButton(true, false);
 	}
@@ -277,9 +275,9 @@ const MenuDisplay = function(d) {
 	}
 	this.clearConnectionLoading = function() {
 		loadingDotsActive = false;
-		dotObjects = [];
 		for (dotLoop of loadingDots) clearInterval(dotLoop);
-		d.draw('   ', logoX, optionsY + 6);
+		d.draw('   ', dotObjects[0].x, dotObjects[0].y);
+		dotObjects = [];
 	}
 
 	this.clearOnline = function(onlineOption, onlineBuffer) {
@@ -296,6 +294,7 @@ const MenuDisplay = function(d) {
 		}
 		this.clearCursor();
 		this.hideConnectionError();
+		if (loadingDotsActive) this.clearConnectionLoading();
 	}
 
 	let connectionError = '';

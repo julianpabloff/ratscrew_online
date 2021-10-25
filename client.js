@@ -109,14 +109,20 @@ function clearScreen(name) {
 function startScreen(name, prevName = 'none') {
 	if (name == 'menu') {
 		display.menu.setSize();
+		display.menu.drawLogo();
 		display.menu.drawMenuStatic(controller.menuOption);
 		// display.menu.drawDynamic(controller.menuOption);
 	} else if (name == 'online') {
 		if (prevName == 'menu') {
-			const wait = setTimeout(() => display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled), display.menu.animationDuration + 200);
 			controller.onlineOption = 0;
+			const wait = setTimeout(() => {
+				display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled)
+			}, display.menu.animationDuration + 200);
+		} else if (prevName == 'online') {
+			display.menu.drawLogo();
+			if (controller.onlineStage == 1) display.menu.drawConnectionLoading();
+			display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, (controller.allFieldsFilled && controller.onlineStage == 0));
 		}
-		else display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled);
 	} else if (name == 'game') {
 	}
 }
@@ -129,7 +135,6 @@ function switchTo(name) {
 }
 
 display.init();
-display.menu.drawLogo();
 startScreen('menu');
 
 let keypress = require('keypress');
@@ -137,6 +142,7 @@ keypress(process.stdin);
 process.stdin.setRawMode(true);
 
 process.stdin.on('keypress', function(chunk, key) {
+	if (currentlyResizing) return;
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
 	if (controller.esc && screen == 'menu') {
@@ -149,27 +155,31 @@ process.stdin.on('keypress', function(chunk, key) {
 	// updateDynamic();
 });
 
-function redrawScreen(name) {
-	display.init();
-	display.resize();
-	display.menu.setSize();
-	if (name == 'online') {
-		display.menu.drawLogo();
-		display.menu.clearCursor();
-		// display.menu.clearOnline(controller.onlineOption, controller.onlineBuffer);
-	}
-	startScreen(name, name);
-}
-
 let rows = process.stdout.rows;
 let columns = process.stdout.columns;
+let currentlyResizing = false;
+let resizeTimer = 0;
+let resizeInterval = 17;
 setInterval(() => {
-	if (rows != process.stdout.rows || columns != process.stdout.columns) {
-		redrawScreen(screen);
-		// updateStatic();
-		// updateDynamic();
+	const windowChanged = rows != process.stdout.rows || columns != process.stdout.columns;
+	if (windowChanged) {
+		// if (!currentlyResizing) display.init();
+		display.init();
+		if (screen == 'online') {
+			display.menu.clearCursor();
+		}
+		process.stdout.cursorTo(0,0);
+		currentlyResizing = true;
+		resizeTimer = 0;
 		rows = process.stdout.rows;
 		columns = process.stdout.columns;
-		menuChanged = true;
+	} else if (currentlyResizing) {
+		resizeTimer += resizeInterval;
+		if (resizeTimer > 1000) {
+			currentlyResizing = false;
+			display.resize();
+			display.menu.setSize();
+			startScreen(screen, screen);
+		}
 	}
-}, 17);
+}, resizeInterval);
