@@ -1,28 +1,43 @@
 const net = require('net');
 
-const host = '127.0.0.1';
+// const host = '127.0.0.1';
+const host = '192.168.0.106';
 const port = 6969;
 
-net.createServer(function(socket) {
-	console.log(socket);
-	// We have a connection - a socket object is assigned to the connection automatically
-	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
-	// Add a 'data' event handler to this instance of socket
-	socket.on('data', function(data) {
-		console.log('DATA ' + socket.remoteAddress + ': ' + data);
-		// Write the data back to the socket, the client will receive it as data from the server
-		// socket.write('You said "' + data + '"');
-		let json = JSON.parse(data);
-		let delta = Date.now() - json.time;
-		socket.write('PING: ' + delta.toString());
-	});
-	socket.on('error', function(error) {
-		console.log(error);
-	});
-	// Add a 'close' event handler to this instance of socket
-	socket.on('close', function(data) {
-	console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
-	});
-}).listen(port, host)
+const players = new Map();
+const lobby = {};
 
+net.createServer((socket) => {
+	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
+
+	function sendEvent(eventName, data) {
+		let json = {eventName: eventName, data: data};
+		socket.write(JSON.stringify(json)); 
+	}
+
+	socket.on('data', (data) => {
+		let json = JSON.parse(data);
+		socket.emit(json.eventName, json.data);
+	});
+
+	socket.on('connection', (playerData) => {
+		players.set(playerData.hash, new Player(playerData));
+		console.log(players);
+		let playerNameList = [];
+		for (let player of players.values()) playerNameList.push(player.name);
+		sendEvent('connection', {players: playerNameList});
+	});
+
+	socket.on('ping', () => { sendEvent('ping'); });
+
+	socket.on('close', function(data) {
+		console.log('CLOSED: ' + socket.remoteAddress +' '+ socket.remotePort);
+	});
+}).listen(port, host);
+
+const Player = function(playerData) {
+	this.hand = [];
+	this.ready = false;
+	this.name = playerData.name;
+}
 console.log('Server listening on ' + host +':'+ port);

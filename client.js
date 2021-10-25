@@ -1,16 +1,28 @@
 const net = require('net');
 // const host = '127.0.0.1';
-// const port = 6969;
+const host = '192.168.0.106';
+const port = 6969;
 
-const client = new net.Socket();
-client.log = function(text) {
-	const obj = {
-		text: text,
-		time: Date.now()
-	};
-	client.write(JSON.stringify(obj));
+// Socket
+const socket = new net.Socket();
+function sendEvent(eventName, data) {
+	let json = {eventName: eventName, data: data};
+	socket.write(JSON.stringify(json));
 }
-client.on('error', function(error) {
+async function request(name, data) {
+	sendEvent(name, data);
+	return new Promise(function(resolve, reject) {
+		socket.once(name, (response) => {
+			resolve(response);
+		});
+	});
+}
+socket.on('data', function(data) {
+	let json = JSON.parse(data);
+	socket.emit(json.eventName, json.data);
+});
+
+socket.on('error', function(error) {
 	// if trying to connect to server lobby
 	if (controller.onlineStage == 1) {
 		/*
@@ -38,24 +50,42 @@ function displayConnectionError(message) {
 	display.menu.drawOnlineDynamic(0, controller.onlineBuffer.length, controller.onlineBuffer);
 	controller.onlineStage = 0;
 }
-client.on('connect', () => {
-	// client.log('Sup bitch');
-	client.write('7');
-	display.menu.clearConnectionLoading(false);
-	controller.onlineStage = 2;
+
+let connectionCancelled = false;
+let playerName = '';
+let hash = Math.floor(Math.random() * 69420);
+socket.on('connect', () => {
+	if (connectionCancelled) socket.destroy();
+	else if (screen == 'online') {
+		const playerData = {
+			name: playerName,
+			hash: hash
+		}
+		const start = Date.now();
+		request('connection', playerData).then(lobby => {
+			const end = Date.now();
+			const ping = Math.floor((end - start) / 2);
+			display.menu.clearConnectionLoading(display.connectionMessageStage != null);
+			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
+			display.menu.drawLobbyStatic(lobby, ping);
+			controller.onlineStage = 2;
+		});
+	}
 });
 
-// Add a 'data' event handler for the client socket
-// data is what the server sent to this socket
-client.on('data', function(data) {
-});
-
-// Add a 'close' event handler for the client socket
 /*
-client.on('close', function() {
+socket.on('close', function() {
 	console.log('Connection closed');
 });
 */
+
+// Server Functions
+async function ping() {
+	const start = Date.now();
+	await request('ping');
+	const end = Date.now();
+	return Math.floor((end - start) / 2);
+}
 
 const display = new (require('./js/display/display.js'));
 	const MenuDisplay = require('./js/display/menu_display.js');
@@ -103,27 +133,35 @@ function updateOnline() {
 
 			const input = controller.onlineBuffer[0].join('');
 			const params = input.split(':');
-			const host = params[0];
-			const port = parseInt(params[1]);
+			// const host = params[0];
+			// const port = parseInt(params[1]);
 			if (port >= 65536 || port == 0) {
 				displayConnectionError('Port should be in between 1 and 65535');
 				return;
 			}
-			client.connect(port, host);
+			connectionCancelled = false;
+			playerName = controller.onlineBuffer[1].join('');
+			// const delayConnection = setTimeout(() => { socket.connect(port, host); }, 1000);
+			socket.connect(port, host); 
 		}
-	} else if (client.connecting) {
+	} else if (controller.onlineStage == 1) {
 		if (controller.esc) {
+			connectionCancelled = true;
 			display.menu.clearConnectionLoading(false);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
 			controller.onlineOption = 2;
 			display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
 			controller.onlineStage = 0;
-			client.destroy();
+			socket.destroy();
 		}
 	} else if (controller.onlineStage == 2) {
 		if (controller.esc) {
 			controller.onlineStage = 0;
-			client.destroy();
+			controller.onlineOption = 0;
+			display.menu.drawOnlineDynamic(0, 2, controller.onlineBuffer);
+			socket.destroy();
+		} else if (controller.tab) {
+			ping().then((ping) => console.log(ping));
 		}
 	}
 }
@@ -183,7 +221,7 @@ process.stdin.on('keypress', function(chunk, key) {
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
 	if (controller.esc && screen == 'menu' || (keyPressed == 'c' && key.ctrl)) {
-		client.destroy();
+		socket.destroy();
 		display.exit();
 		process.exit();
 	}

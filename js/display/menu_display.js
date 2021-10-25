@@ -292,7 +292,7 @@ const MenuDisplay = function(d) {
 		if (loadingDotsActive) this.clearConnectionLoading();
 	}
 
-	this.connectionMessageStage = 0;
+	this.connectionMessageStage = null;
 	const connectionProgessMessages = ['Connecting', 'Press ESC to cancel'];
 	let connectionTimeouts = [];
 	this.showConnectingMessage = function(messageIndex, delay) {
@@ -329,6 +329,16 @@ const MenuDisplay = function(d) {
 		console.log(buffer);
 		stdout.cursorTo(1, 5);
 		console.log(textChange);
+	}
+
+	this.drawLobbyStatic = function(lobby, ping) {
+		stdout.cursorTo(1,1);
+		console.log(lobby);
+		console.log('ping: ' + ping + 'ms');
+		/*
+		d.setFg('white');
+		d.draw(playerName, logoX + 40, optionsY);
+		*/
 	}
 }
 
