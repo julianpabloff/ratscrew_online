@@ -16,6 +16,9 @@ net.createServer(function(socket) {
 		let delta = Date.now() - json.time;
 		socket.write('PING: ' + delta.toString());
 	});
+	socket.on('error', function(error) {
+		console.log(error);
+	});
 	// Add a 'close' event handler to this instance of socket
 	socket.on('close', function(data) {
 	console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);

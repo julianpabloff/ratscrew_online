@@ -72,7 +72,7 @@ const Controller = function() {
 				}
 				const input = this.onlineBuffer[0].join('');
 				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
-				this.allFieldsFilled = (input == match);
+				if (input != match) this.allFieldsFilled = false;
 				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
 				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
 			}

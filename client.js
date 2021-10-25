@@ -13,6 +13,7 @@ client.log = function(text) {
 client.on('error', function(error) {
 	// if trying to connect to server lobby
 	if (controller.onlineStage == 1) {
+		/*
 		let message;
 		switch(error.code) {
 			case 'ETIMEDOUT': message = 'Connection timed out'; break;
@@ -21,13 +22,14 @@ client.on('error', function(error) {
 			case 'ENOENT' : message = 'Invalid address'; break;
 			default: message = 'Something else happened bro'; break;
 		}
-		// display.menu.showConnectionError(error.address, error.port.toString());
+		*/
+		const message = 'Connection error (' + error.code + ')';
+		display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
 		displayConnectionError(message);
 	}
 	// process.stdout.cursorTo(1,1);
 	// console.log(error);
 });
-
 function displayConnectionError(message) {
 	display.menu.showConnectionError(message);
 	display.menu.clearConnectionLoading(false);
@@ -36,16 +38,20 @@ function displayConnectionError(message) {
 	display.menu.drawOnlineDynamic(0, controller.onlineBuffer.length, controller.onlineBuffer);
 	controller.onlineStage = 0;
 }
-/*
+client.on('connect', () => {
+	// client.log('Sup bitch');
+	client.write('7');
+	display.menu.clearConnectionLoading(false);
+	controller.onlineStage = 2;
+});
+
 // Add a 'data' event handler for the client socket
 // data is what the server sent to this socket
 client.on('data', function(data) {
-	console.log('DATA: ' + data);
-	// Close the client socket completely
-	client.destroy();
 });
 
 // Add a 'close' event handler for the client socket
+/*
 client.on('close', function() {
 	console.log('Connection closed');
 });
@@ -91,22 +97,10 @@ function updateOnline() {
 			display.menu.drawOnlineSelection(controller.onlineOption);
 			display.menu.drawConnectionLoading();
 			display.menu.hideConnectionError();
+			display.menu.showConnectingMessage(0, 1000);
+			display.menu.showConnectingMessage(1, 3000);
 			controller.onlineStage = 1;
-			/*
-			setTimeout(() => {
-				if (controller.onlineStage == 1) {
-					display.menu.toggleConnectingMessage(0, true);
-					display.menu.connectionMessageStage = 0;
-				}
-			}, 1000);
-			setTimeout(() => {
-				if (controller.onlineStage == 1) {
-					display.menu.toggleConnectingMessage(1, true);
-					display.menu.connectionMessageStage = 1;
-				}
-			}, 3000);
-			*/
-			// client.connect(port, host, () => {
+
 			const input = controller.onlineBuffer[0].join('');
 			const params = input.split(':');
 			const host = params[0];
@@ -115,28 +109,22 @@ function updateOnline() {
 				displayConnectionError('Port should be in between 1 and 65535');
 				return;
 			}
-			client.connect(parseInt(params[1]), params[0], () => {
-				client.log('Sup bitch');
-				display.menu.clearConnectionLoading(false);
-				controller.onlineStage = 2;
-			});
+			client.connect(port, host);
+		}
+	} else if (client.connecting) {
+		if (controller.esc) {
+			display.menu.clearConnectionLoading(false);
+			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
+			controller.onlineOption = 2;
+			display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
+			controller.onlineStage = 0;
+			client.destroy();
 		}
 	} else if (controller.onlineStage == 2) {
 		if (controller.esc) {
 			controller.onlineStage = 0;
 			client.destroy();
 		}
-	} else if (client.connecting) {
-		/*
-		if (controller.esc) {
-			display.menu.clearConnectionLoading(false);
-			display.menu.toggleConnectingMessage(display.menu.connectionMessageStage, false);
-			controller.onlineOption = 2;
-			display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
-			controller.onlineStage = 0;
-			client.destroy();
-		}
-		*/
 	}
 }
 
@@ -194,7 +182,7 @@ process.stdin.on('keypress', function(chunk, key) {
 	if (currentlyResizing) return;
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
-	if (controller.esc && screen == 'menu') {
+	if (controller.esc && screen == 'menu' || (keyPressed == 'c' && key.ctrl)) {
 		client.destroy();
 		display.exit();
 		process.exit();

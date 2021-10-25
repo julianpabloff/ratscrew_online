@@ -107,8 +107,6 @@ const MenuDisplay = function(d) {
 				d.draw('>', logoX - 2, optionsY + 2 * (menuOption));
 			}
 			else d.setFg('white');
-			// d.draw(option, d.centerString(option), optionsY + 2 * i);
-			// d.draw(option, d.centerWidth(8), optionsY + 2 * i);
 			d.draw(option, logoX, optionsY + 2 * i);
 		}
 	}
@@ -126,13 +124,6 @@ const MenuDisplay = function(d) {
 		for (let i = 0; i < options.length; i++) {
 			if (i != menuOption) dissolve(options[i].length, logoX, optionsY + 2 * i, 125);
 		}
-		// const nextScreen = setTimeout(() => {
-		// 	switch (menuOption) {
-		// 		case 0: this.drawLocalStatic(); break;
-		// 		case 1: this.drawOnlineStatic(); break;
-		// 		default: return;
-		// 	}
-		// }, duration);
 	}
 
 	this.drawLocalStatic = function() {
@@ -301,20 +292,24 @@ const MenuDisplay = function(d) {
 		if (loadingDotsActive) this.clearConnectionLoading();
 	}
 
-	/*
 	this.connectionMessageStage = 0;
 	const connectionProgessMessages = ['Connecting', 'Press ESC to cancel'];
-	this.toggleConnectingMessage = function(messageIndex, show) {
+	let connectionTimeouts = [];
+	this.showConnectingMessage = function(messageIndex, delay) {
 		const message = connectionProgessMessages[messageIndex];
 		const y = optionsY + 3 * onlineOptions.length - 1;
-		if (show) d.draw(message, logoX, y);
-		else d.draw(' '.repeat(message.length), logoX, y);
+		connectionTimeouts.push(setTimeout(() => {
+			d.setFg('red');
+			d.draw(message, logoX, y);
+		}, delay));
+		this.connectionMessageStage = messageIndex;
 	}
-	*/
-	this.showConnectionErrorOld = function(address, port) {
-		connectionError = 'Error connecting to ' + address + ':' + port;
-		d.setFg('red');
-		d.draw(connectionError, logoX, optionsY + 8);
+	this.hideConnectingMessage = function(messageIndex) {
+		const message = connectionProgessMessages[messageIndex];
+		const y = optionsY + 3 * onlineOptions.length - 1;
+		d.draw(' '.repeat(message.length), logoX, y);
+		for (let timeout of connectionTimeouts)
+			clearTimeout(timeout);
 	}
 	let connectionError = '';
 	this.showConnectionError = function(message) {
