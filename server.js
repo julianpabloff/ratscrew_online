@@ -4,6 +4,7 @@ const host = '127.0.0.1';
 const port = 6969;
 
 net.createServer(function(socket) {
+	console.log(socket);
 	// We have a connection - a socket object is assigned to the connection automatically
 	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
 	// Add a 'data' event handler to this instance of socket
@@ -17,7 +18,7 @@ net.createServer(function(socket) {
 	});
 	// Add a 'close' event handler to this instance of socket
 	socket.on('close', function(data) {
-	console.log('CLOSED: ' + socket.remoteAddress +' '+ socket.remotePort);
+	console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
 	});
 }).listen(port, host)
 

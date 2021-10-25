@@ -70,6 +70,9 @@ const Controller = function() {
 						break;
 					}
 				}
+				const input = this.onlineBuffer[0].join('');
+				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
+				this.allFieldsFilled = (input == match);
 				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
 				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
 			}

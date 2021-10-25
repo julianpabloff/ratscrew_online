@@ -1,6 +1,6 @@
 const net = require('net');
-const host = '127.0.0.1';
-const port = 6969;
+// const host = '127.0.0.1';
+// const port = 6969;
 
 const client = new net.Socket();
 client.log = function(text) {
@@ -12,14 +12,30 @@ client.log = function(text) {
 }
 client.on('error', function(error) {
 	// if trying to connect to server lobby
-	if (controller.onlineStage == 1 && error.code == 'ETIMEDOUT') {
-		display.menu.showConnectionError(error.address, error.port.toString());
-		display.menu.clearConnectionLoading();
-		controller.onlineOption = 0;
-		display.menu.drawOnlineDynamic(0, controller.onlineBuffer.length, controller.onlineBuffer);
-		controller.onlineStage = 0;
+	if (controller.onlineStage == 1) {
+		let message;
+		switch(error.code) {
+			case 'ETIMEDOUT': message = 'Connection timed out'; break;
+			case 'ENOTFOUND' : message = 'Server not found'; break;
+			case 'ECONNREFUSED' : message = 'Connection refused'; break;
+			case 'ENOENT' : message = 'Invalid address'; break;
+			default: message = 'Something else happened bro'; break;
+		}
+		// display.menu.showConnectionError(error.address, error.port.toString());
+		displayConnectionError(message);
 	}
+	// process.stdout.cursorTo(1,1);
+	// console.log(error);
 });
+
+function displayConnectionError(message) {
+	display.menu.showConnectionError(message);
+	display.menu.clearConnectionLoading(false);
+	controller.onlineOption = 0;
+	display.menu.cancelOnlineSelection();
+	display.menu.drawOnlineDynamic(0, controller.onlineBuffer.length, controller.onlineBuffer);
+	controller.onlineStage = 0;
+}
 /*
 // Add a 'data' event handler for the client socket
 // data is what the server sent to this socket
@@ -55,11 +71,11 @@ function updateMenu() {
 
 let prevAllFieldsFilled = false;
 function updateOnline() {
-	if (controller.esc) switchTo('menu');
 	const prevOnlineOption = controller.onlineOption;
 	controller.handleOnline();
 	// display.menu.debugOnlineBuffer(controller.onlineBuffer, controller.textChange);
 	if (controller.onlineStage == 0) {
+		if (controller.esc) switchTo('menu');
 		// Moving through menu
 		if (prevOnlineOption != controller.onlineOption)
 			display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
@@ -76,18 +92,51 @@ function updateOnline() {
 			display.menu.drawConnectionLoading();
 			display.menu.hideConnectionError();
 			controller.onlineStage = 1;
+			/*
+			setTimeout(() => {
+				if (controller.onlineStage == 1) {
+					display.menu.toggleConnectingMessage(0, true);
+					display.menu.connectionMessageStage = 0;
+				}
+			}, 1000);
+			setTimeout(() => {
+				if (controller.onlineStage == 1) {
+					display.menu.toggleConnectingMessage(1, true);
+					display.menu.connectionMessageStage = 1;
+				}
+			}, 3000);
+			*/
 			// client.connect(port, host, () => {
-			client.connect(port, '123.3.2.3', () => {
+			const input = controller.onlineBuffer[0].join('');
+			const params = input.split(':');
+			const host = params[0];
+			const port = parseInt(params[1]);
+			if (port >= 65536 || port == 0) {
+				displayConnectionError('Port should be in between 1 and 65535');
+				return;
+			}
+			client.connect(parseInt(params[1]), params[0], () => {
 				client.log('Sup bitch');
-				display.menu.clearConnectionLoading();
-				// controller.onlineStage = 2;
+				display.menu.clearConnectionLoading(false);
+				controller.onlineStage = 2;
 			});
 		}
-	} else if (controller.onlineStage == 1) {
-		if (controller.tab) {
-			display.menu.clearConnectionLoading();
+	} else if (controller.onlineStage == 2) {
+		if (controller.esc) {
+			controller.onlineStage = 0;
 			client.destroy();
 		}
+	} else if (client.connecting) {
+		/*
+		if (controller.esc) {
+			display.menu.clearConnectionLoading(false);
+			display.menu.toggleConnectingMessage(display.menu.connectionMessageStage, false);
+			controller.onlineOption = 2;
+			display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
+			controller.onlineStage = 0;
+			client.destroy();
+		}
+		*/
 	}
 }
 

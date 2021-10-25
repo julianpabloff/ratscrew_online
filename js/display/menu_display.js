@@ -79,6 +79,7 @@ const MenuDisplay = function(d) {
 		const dissolveInterval = setInterval(dissolveHelper, duration / width);
 	}
 
+	let moveRight;
 	function animateSelection(text, x, y, duration) {
 		d.setFg('red');
 		const distance = text.length + 3;
@@ -92,7 +93,7 @@ const MenuDisplay = function(d) {
 				position++;
 			}
 		}
-		const moveRight = setInterval(drawAnimation, Math.floor(duration/distance));
+		moveRight = setInterval(drawAnimation, Math.floor(duration/distance));
 	}
 
 	// MAIN MENU //
@@ -243,6 +244,9 @@ const MenuDisplay = function(d) {
 	this.drawOnlineSelection = function(onlineOption) {
 		animateSelection(onlineOptions[onlineOption], logoX, optionsY + 3 * onlineOption, 250);
 	}
+	this.cancelOnlineSelection = function() {
+		clearInterval(moveRight);
+	}
 	let loadingDots = [];
 	let dotObjects = [];
 	let loadingDotsActive = false;
@@ -273,10 +277,10 @@ const MenuDisplay = function(d) {
 		}
 		const makeLoadingDots = setInterval(makeLoadingDot, 500);
 	}
-	this.clearConnectionLoading = function() {
+	this.clearConnectionLoading = function(drawOverDots) {
 		loadingDotsActive = false;
 		for (dotLoop of loadingDots) clearInterval(dotLoop);
-		d.draw('   ', dotObjects[0].x, dotObjects[0].y);
+		if (drawOverDots) d.draw('   ', dotObjects[0].x, dotObjects[0].y);
 		dotObjects = [];
 	}
 
@@ -297,11 +301,26 @@ const MenuDisplay = function(d) {
 		if (loadingDotsActive) this.clearConnectionLoading();
 	}
 
-	let connectionError = '';
-	this.showConnectionError = function(address, port) {
+	/*
+	this.connectionMessageStage = 0;
+	const connectionProgessMessages = ['Connecting', 'Press ESC to cancel'];
+	this.toggleConnectingMessage = function(messageIndex, show) {
+		const message = connectionProgessMessages[messageIndex];
+		const y = optionsY + 3 * onlineOptions.length - 1;
+		if (show) d.draw(message, logoX, y);
+		else d.draw(' '.repeat(message.length), logoX, y);
+	}
+	*/
+	this.showConnectionErrorOld = function(address, port) {
 		connectionError = 'Error connecting to ' + address + ':' + port;
 		d.setFg('red');
 		d.draw(connectionError, logoX, optionsY + 8);
+	}
+	let connectionError = '';
+	this.showConnectionError = function(message) {
+		connectionError = message;
+		d.setFg('red');
+		d.draw(message, logoX, optionsY + 8);
 	}
 	this.hideConnectionError = function() {
 		const errorLength = connectionError.length;
