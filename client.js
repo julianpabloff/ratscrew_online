@@ -56,30 +56,37 @@ function displayConnectionError(message) {
 }
 
 let connectionCancelled = false;
+let pendingConnections = 0;
 let playerName = '';
 const hash = crypto.randomBytes(32);
 // const hash = buffer.toString('hex');
 socket.on('connect', () => {
-	if (connectionCancelled) socket.destroy();
+	pendingConnections--;
+	process.stdout.cursorTo(4, 50);
+	console.log(pendingConnections);
+	if (connectionCancelled) {
+		socket.destroy();
+		if (pendingConnections == 0) connectionCancelled = false;
+	}
 	else if (screen == 'online') {
 		const playerData = {
 			name: playerName,
 			hash: hash
 		}
 		const start = Date.now();
-		request('connection', playerData).then(() => {
+		request('connection', playerData).then((lobby) => {
 			const end = Date.now();
 			const ping = Math.floor((end - start) / 2);
 			display.menu.clearConnectionLoading(display.connectionMessageStage != null);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
+			process.stdout.cursorTo(1,1);
+			console.log(lobby);
 			// display.menu.drawLobbyStatic(lobby, ping);
 			controller.onlineStage = 2;
 		});
 	}
 });
 socket.on('lobby', lobby => {
-	process.stdout.cursorTo(1,1);
-	console.log(lobby);
 });
 
 /*
@@ -122,7 +129,7 @@ function updateMenu() {
 }
 
 let prevAllFieldsFilled = false;
-function updateOnline() {
+async function updateOnline() {
 	const prevOnlineOption = controller.onlineOption;
 	controller.handleOnline();
 	// display.menu.debugOnlineBuffer(controller.onlineBuffer, controller.textChange);
@@ -140,13 +147,7 @@ function updateOnline() {
 			prevAllFieldsFilled = controller.allFieldsFilled;
 		// Connect button pressed
 		} else if (controller.enter && controller.onlineOption == controller.onlineBuffer.length && controller.allFieldsFilled) {
-			display.menu.drawOnlineSelection(controller.onlineOption);
-			display.menu.drawConnectionLoading();
-			display.menu.hideConnectionError();
-			display.menu.showConnectingMessage(0, 1000);
-			display.menu.showConnectingMessage(1, 3000);
 			controller.onlineStage = 1;
-
 			const input = controller.onlineBuffer[0].join('');
 			const params = input.split(':');
 			// const host = params[0];
@@ -155,10 +156,17 @@ function updateOnline() {
 				displayConnectionError('Port should be in between 1 and 65535');
 				return;
 			}
-			connectionCancelled = false;
 			playerName = controller.onlineBuffer[1].join('');
-			// const delayConnection = setTimeout(() => { socket.connect(port, host); }, 1000);
-			socket.connect(port, host); 
+			const delayConnection = setTimeout(() => { socket.connect(port, host); }, 1000);
+			pendingConnections++;
+			process.stdout.cursorTo(4, 50);
+			console.log(pendingConnections);
+			// socket.connect(port, host); 
+			display.menu.drawOnlineSelection(controller.onlineOption);
+			display.menu.drawConnectionLoading();
+			display.menu.hideConnectionError();
+			display.menu.showConnectingMessage(0, 1000);
+			display.menu.showConnectingMessage(1, 3000);
 		}
 	} else if (controller.onlineStage == 1) {
 		if (controller.esc) {
@@ -166,7 +174,8 @@ function updateOnline() {
 			display.menu.clearConnectionLoading(false);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
 			controller.onlineOption = 2;
-			display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
+			// display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
+			display.menu.draw('drawOnlineDynamic', [2, 0, controller.onlineBuffer]);
 			controller.onlineStage = 0;
 			socket.destroy();
 		}

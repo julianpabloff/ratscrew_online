@@ -1,3 +1,6 @@
+const EventEmitter = require('events');
+const displayEmitter = new EventEmitter();
+
 const MenuDisplay = function(d) {
 	
 	let stdout = process.stdout;
@@ -5,7 +8,7 @@ const MenuDisplay = function(d) {
 	const logo = [
 		'   ____________ ___________ ____    ____ ___________ ___________ ___________ ___________ ____________',
 		' /\\     ______\\\\    ______\\\\   \\  /\\   \\\\    ___   \\\\____   ___\\\\____   ___\\\\    ___   \\\\    ____   \\',
-		'\\ \\    \\_____/_\\   \\   __/_\\   \\_\\_\\   \\\\   \\_/\\   \\___/\\  \\__//___/\\  \\__/ \\   \\__\\   \\\\   \\__/\\   \\',
+		'\\ \\    \\_____/_\\   \\   __/_\\   \\_\\_\\   \\\\   \\_/\\   \\___/\\  \\__//___/\\  \\__/ \\   \\_/\\   \\\\   \\__/\\   \\',
 		'\\ \\     ______\\\\   \\ /\\   \\\\____    ___\\\\    ______\\  \\ \\  \\      \\ \\  \\  \\ \\    ___   \\\\   \\ \\ \\   \\',
 		'\\ \\    \\_____/_\\   \\__\\   \\___/\\   \\_/\\ \\   \\_____/   \\ \\  \\     _\\_\\  \\__\\_\\   \\  \\   \\\\   \\ \\ \\   \\',
 		'\\ \\___________\\\\__________\\  \\ \\___\\  \\ \\___\\         \\ \\__\\   /\\__________\\\\___\\  \\___\\\\___\\ \\ \\___\\',
@@ -49,6 +52,7 @@ const MenuDisplay = function(d) {
 	}
 
 	this.animationDuration = 250;
+	let animating = false;
 	function dissolve(width, x, y, duration, content = false, color = false) {
 		let positions = [];
 		let sequence = [];
@@ -68,7 +72,11 @@ const MenuDisplay = function(d) {
 		}
 		let increment = 0;
 		function dissolveHelper() {
-			if (increment == width) clearInterval(dissolveInterval);
+			if (increment == width) {
+				clearInterval(dissolveInterval);
+				animating = false;
+				displayEmitter.emit('doneAnimating');
+			}
 			else {
 				let char = content ? content[sequence[increment]] : ' ';
 				if (color) d.setFg(color);
@@ -76,24 +84,42 @@ const MenuDisplay = function(d) {
 				increment++;
 			}
 		}
+		animating = true;
 		const dissolveInterval = setInterval(dissolveHelper, duration / width);
 	}
 
 	let moveRight;
+	let position;
 	function animateSelection(text, x, y, duration) {
-		d.setFg('red');
 		const distance = text.length + 3;
-		let position = 0;
+		position = 0;
 		function drawAnimation() {
+			d.setFg('red');
 			if (position == distance) {
 				d.draw(' ', x - 2 + position, y);
 				clearInterval(moveRight);
+				animating = false;
+				displayEmitter.emit('doneAnimating');
 			} else {
 				d.draw(' > ', x - 2 + position, y);
 				position++;
 			}
 		}
+		animating = true;
 		moveRight = setInterval(drawAnimation, Math.floor(duration/distance));
+	}
+
+	this.waitForAnimation = async function() {
+		return new Promise(function(resolve, reject) {
+			displayEmitter.once('doneAnimating', () => {
+				resolve();
+			});
+		});
+	}
+
+	this.draw = async function(name, arguments) {
+		await this.waitForAnimation();
+		this[name](...arguments);
 	}
 
 	// MAIN MENU //

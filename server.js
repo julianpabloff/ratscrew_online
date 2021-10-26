@@ -22,14 +22,15 @@ net.createServer((socket) => {
 	});
 
 	socket.on('connection', (playerData) => {
-		socket.id = playerData.hash;
-		sockets.set(playerData.hash, socket);
+		const hash = playerData.hash;
+		socket.id = hash;
+		sockets.set(hash, socket);
 
-		players.set(playerData.hash, new Player(playerData));
+		players.set(hash, new Player(playerData));
 		console.log(players);
 
-		socket.sendEvent('connection');
-		sendLobbyInfo();
+		const lobby = getLobbyInfo();
+		socket.sendEvent('connection', lobby);
 	});
 
 	socket.setTimeout(3000);
@@ -37,6 +38,7 @@ net.createServer((socket) => {
 		console.log('socket timeout');
 		// Tell the other players about the disconnect
 		// Pause the game or lobby
+		// Kick player after inactivity
 	});
 
 	socket.on('ping', () => { 
@@ -54,11 +56,15 @@ net.createServer((socket) => {
 	});
 }).listen(port, host);
 
-function sendLobbyInfo() {
+function getLobbyInfo() {
 	const lobby = [];
 	players.forEach(player => {
 		lobby.push({name: player.name, connected: player.connected, ready: player.ready});
 	});
+	return lobby;
+}
+function sendLobbyInfo() {
+	const lobby = getLobbyInfo();
 	players.forEach(player => {
 		if (player.connected) {
 			const socket = sockets.get(player.hash);
