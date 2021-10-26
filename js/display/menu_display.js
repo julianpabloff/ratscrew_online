@@ -28,8 +28,10 @@ const MenuDisplay = function(d) {
 		logoX = d.centerWidth(logoWidth);
 		logoY = d.centerHeight(30);
 		optionsY = logoY + logoHeight + 4;
+		lobbyX = logoX + 40;
+		logoEndX = logoX + logoWidth;
 	}
-	let logoX, logoY, optionsY;
+	let logoX, logoY, optionsY, lobbyX;
 	this.setSize();
 
 	this.drawLogo = function() {
@@ -357,14 +359,65 @@ const MenuDisplay = function(d) {
 		console.log(textChange);
 	}
 
-	this.drawLobbyStatic = function(lobby, ping) {
-		stdout.cursorTo(1,1);
-		console.log(lobby);
-		console.log('ping: ' + ping + 'ms');
-		/*
+	this.drawLobbyStatic = function(lobby) {
+		let playerCount = lobby.size;
+		d.setFg('magenta');
+		const divider = '─'.repeat(logoEndX - lobbyX);
+		d.draw(divider, lobbyX, optionsY - 1);
+		let i = 0;
+		lobby.forEach(player => {
+			const y = optionsY + 3 * i;
+			drawPlayerInfo(player, y);
+			d.setFg('magenta');
+			// if (i < playerCount - 1)
+			d.draw(divider, lobbyX, y + 2);
+			i++;
+		});
+	}
+	function drawPlayerInfo(player, y, clear = false) {
+		let str;
+		if (clear) str = ' '.repeat(player.name.length);
+		else str = player.name;
+		if (player.you) {
+			if (!clear) str = str.concat(' (YOU)');
+			d.setFg('cyan');
+		} else d.setFg('white');
+		d.draw(str, lobbyX, y);
+		drawPlayerConnectionInfo(player, y);
+	}
+	function drawPlayerConnectionInfo(player, y) {
+		const ping = player.ping;
+		const bars = Math.ceil(12 / ((ping / 50) ** 1.5 + 1));
+		stdout.cursorTo(logoEndX - 12, y);
+		d.setFg('green');
+		stdout.write('|'.repeat(bars));
 		d.setFg('white');
-		d.draw(playerName, logoX + 40, optionsY);
-		*/
+		stdout.write('|'.repeat(12 - bars));
+		if (player.ready) {
+			d.setFg('green');
+			d.draw('READY', lobbyX, y + 1);
+		} else {
+			d.setFg('red');
+			d.draw('NOT READY', lobbyX, y + 1);
+		}
+		d.setFg('white');
+		d.draw('Ping:', logoEndX - 12, y + 1);
+		const pingString = ping.toString();
+		d.draw(' '.repeat(4 - pingString.length) + pingString + 'ms', logoEndX - 6, y + 1);
+	}
+	this.addPlayerToLobby = function(player, index) {
+		const y = optionsY + 3 * index;
+		drawPlayerInfo(player, y);
+		drawPlayerConnectionInfo(player, y);
+	}
+	this.removePlayerFromLobby = function(lobby, id) {
+	}
+	this.drawLobbyConnectionInfo = function(lobby) {
+		let i = 0;
+		lobby.forEach(player => {
+			drawPlayerConnectionInfo(player, optionsY + 3 * i);
+			i++;
+		});
 	}
 }
 

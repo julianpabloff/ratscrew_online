@@ -59,11 +59,9 @@ let connectionCancelled = false;
 let pendingConnections = 0;
 let playerName = '';
 const hash = crypto.randomBytes(32);
-// const hash = buffer.toString('hex');
 socket.on('connect', () => {
 	pendingConnections--;
 	process.stdout.cursorTo(4, 50);
-	console.log(pendingConnections);
 	if (connectionCancelled) {
 		socket.destroy();
 		if (pendingConnections == 0) connectionCancelled = false;
@@ -73,26 +71,47 @@ socket.on('connect', () => {
 			name: playerName,
 			hash: hash
 		}
-		const start = Date.now();
-		request('connection', playerData).then((lobby) => {
-			const end = Date.now();
-			const ping = Math.floor((end - start) / 2);
+		// sendEvent('connection', playerData);
+		request('connection', playerData).then(lobbyData => {
+			processLobbyData(lobbyData);
 			display.menu.clearConnectionLoading(display.connectionMessageStage != null);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
-			process.stdout.cursorTo(1,1);
-			console.log(lobby);
-			// display.menu.drawLobbyStatic(lobby, ping);
+			display.menu.drawLobbyStatic(lobby);
 			controller.onlineStage = 2;
 		});
 	}
 });
-socket.on('lobby', lobby => {
+
+const lobby = new Map();
+function processLobbyData(lobbyData) {
+	for (let player of lobbyData) {
+		const buffer = Buffer.from(player.id);
+		player.you = (buffer.compare(hash) == 0);
+		lobby.set(player.id, player);
+	}
+}
+socket.on('lobbyChange', data => {
+	// Lobby commands
+	// enter, leave, disconnect, reconnect, ready
+	const player = data.player;
+	if (data.type == 'enter') {
+		lobby.set(player.id, player);
+		display.menu.addPlayerToLobby(player, lobby.size - 1);
+	}
 });
-socket.on('serverPing', () => {
+socket.on('serverPing', pingData => {
 	sendEvent('serverPing');
 });
-
-
+socket.on('playerPings', pingData => {
+	lobby.forEach(player => {
+		player.ping = pingData[player.id];
+	});
+	if (screen == 'online')
+		display.menu.drawLobbyConnectionInfo(lobby);
+});
+socket.on('playerDisconnect', id => {
+	lobby.delete(id);
+});
 /*
 socket.on('close', function() {
 	console.log('Connection closed');
@@ -164,7 +183,6 @@ async function updateOnline() {
 			const delayConnection = setTimeout(() => { socket.connect(port, host); }, 1000);
 			pendingConnections++;
 			process.stdout.cursorTo(4, 50);
-			console.log(pendingConnections);
 			// socket.connect(port, host); 
 			display.menu.drawOnlineSelection(controller.onlineOption);
 			display.menu.drawConnectionLoading();
@@ -188,7 +206,7 @@ async function updateOnline() {
 			controller.onlineStage = 0;
 			controller.onlineOption = 0;
 			display.menu.drawOnlineDynamic(0, 2, controller.onlineBuffer);
-			sendEvent('disconnect');
+			sendEvent('leave');
 			socket.destroy();
 		} else if (controller.tab) {
 			getPing().then((ping) => {

@@ -29,21 +29,23 @@ net.createServer((socket) => {
 
 	const connectionTimestamp = Date.now();
 	socket.on('connection', (playerData) => {
-		const hash = playerData.hash;
+		const hash = Buffer.from(playerData.hash);
 		socket.id = hash;
-		sockets.set(hash, socket);
+		sockets.set(playerData.hash, socket);
 
-		playerData['ping'] = Math.floor((Date.now() - connectionTimestamp) / 2);
+		const now = Date.now() + Math.floor(Math.random() * 200);
+		playerData['ping'] = Math.floor((now - connectionTimestamp) / 2);
 		players.set(hash, new Player(playerData));
 		console.log(players);
 
-		const lobby = getLobbyInfo();
-		socket.sendEvent('connection', lobby);
+		socket.sendEvent('connection', getLobbyInfo());
+		sendLobbyEvent('enter', hash);
 	});
 
-	socket.setTimeout(3000);
+	socket.setTimeout(5000);
 	socket.on('timeout', () => {
 		console.log('socket timeout');
+		players[socket.id].connected = false;
 		//clearInterval(pingInterval);
 		// Tell the other players about the disconnect
 		// Pause the game or lobby
@@ -55,58 +57,76 @@ net.createServer((socket) => {
 		console.log('pong');
 	});
 
-	socket.on('disconnect', () => {
+	socket.on('leave', () => {
 		players.delete(socket.id);
 		console.log(players);
 	});
 
 	socket.on('close', function(data) {
+		console.log(data);
 		console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
 		clearInterval(pingInterval);
 	});
 
 	let pinging = false;
 	async function getPing() {
+		// This is to make sure players are connected
+		// and also to send out everyone's ping for the lobby screen
 		if (!pinging) {
 			pinging = true;
 			const start = Date.now();
 			await socket.request('serverPing');
-			const end = Date.now();
+			// const end = Date.now();
+			const now = Date.now() + Math.floor(Math.random() * 200);
 			pinging = false;
 			const player = players.get(socket.id);
-			player.ping = Math.floor((end - start) / 2);
+			player.ping = Math.floor((now - start) / 2);
 			console.log(player.name + ' has ping: ' + player.ping);
+			// sendLobbyInfo();
+			socket.sendEvent('playerPings', getPlayerPings());
 		}
 	}
-	const pingInterval = setInterval(getPing, 1500);
+	const pingInterval = setInterval(getPing, 2500);
 
 }).listen(port, host);
 
 function getLobbyInfo() {
-	const lobby = [];
+	const playerArray = [];
 	players.forEach(player => {
-		lobby.push({
+		playerArray.push({
+			id: player.id,
 			name: player.name,
+			ping: player.ping,
 			connected: player.connected,
 			ready: player.ready,
-			ping: player.ping
 		});
 	});
-	return lobby;
+	return playerArray;
 }
-function sendLobbyInfo() {
-	const lobby = getLobbyInfo();
+function sendLobbyEvent(type, id) {
 	players.forEach(player => {
-		if (player.connected) {
-			const socket = sockets.get(player.hash);
-			socket.sendEvent('lobby', lobby);
+		const buffer = Buffer.from(player.id);
+		console.log(player.name);
+		console.log(player.connected && buffer.compare(id) != 0);
+		if (player.connected && buffer.compare(id) != 0) {
+			const socket = sockets.get(player.id);
+			const affectedPlayer = players.get(id);
+			const json = {type: type, player: affectedPlayer};
+			socket.sendEvent('lobbyChange', json);
 		}
 	});
 }
+function getPlayerPings() {
+	const json = {};
+	players.forEach((player) => {
+		json[player.id] = player.ping;
+	});
+	return json;
+}
+// function sendDisconnect
 
 const Player = function(playerData) {
-	this.hand = [];
-	this.hash = playerData.hash;
+	this.id = playerData.hash;
 	this.name = playerData.name;
 	this.ping = playerData.ping;
 	this.connected = true;
