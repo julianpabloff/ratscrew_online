@@ -88,6 +88,10 @@ socket.on('connect', () => {
 });
 socket.on('lobby', lobby => {
 });
+socket.on('serverPing', () => {
+	sendEvent('serverPing');
+});
+
 
 /*
 socket.on('close', function() {
@@ -104,7 +108,7 @@ async function getPing() {
 	}
 	pinging = true;
 	const start = Date.now();
-	await request('ping');
+	await request('clientPing');
 	const end = Date.now();
 	pinging = false;
 	return Math.floor((end - start) / 2);
