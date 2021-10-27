@@ -58,7 +58,7 @@ function displayConnectionError(message) {
 let connectionCancelled = false;
 let pendingConnections = 0;
 let playerName = '';
-const hash = crypto.randomBytes(32);
+const hash = crypto.randomBytes(32).toString('hex');
 socket.on('connect', () => {
 	pendingConnections--;
 	process.stdout.cursorTo(4, 50);
@@ -85,8 +85,9 @@ socket.on('connect', () => {
 const lobby = new Map();
 function processLobbyData(lobbyData) {
 	for (let player of lobbyData) {
-		const buffer = Buffer.from(player.id);
-		player.you = (buffer.compare(hash) == 0);
+		// const buffer = Buffer.from(player.id);
+		// player.you = (buffer.compare(hash) == 0);
+		player.you = (player.id == hash);
 		lobby.set(player.id, player);
 	}
 }
@@ -96,10 +97,15 @@ socket.on('lobbyChange', data => {
 	const player = data.player;
 	if (data.type == 'enter') {
 		lobby.set(player.id, player);
+		display.menu.debugLobby(lobby);
 		display.menu.addPlayerToLobby(player, lobby.size - 1);
+	} else if (data.type == 'leave') {
+		display.menu.removePlayerFromLobby(lobby, player.id);
+		lobby.delete(player.id);
+		display.menu.debugLobby(lobby);
 	}
 });
-socket.on('serverPing', pingData => {
+socket.on('serverPing', () => {
 	sendEvent('serverPing');
 });
 socket.on('playerPings', pingData => {
@@ -197,17 +203,22 @@ async function updateOnline() {
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
 			controller.onlineOption = 2;
 			// display.menu.drawOnlineDynamic(2, 0, controller.onlineBuffer);
-			display.menu.draw('drawOnlineDynamic', [2, 0, controller.onlineBuffer]);
+			display.menu.drawAsync('drawOnlineDynamic', [2, 0, controller.onlineBuffer]);
 			controller.onlineStage = 0;
 			socket.destroy();
 		}
 	} else if (controller.onlineStage == 2) {
+		if (controller.space) {
+			display.menu.debugLobby(lobby);
+		}
 		if (controller.esc) {
 			controller.onlineStage = 0;
 			controller.onlineOption = 0;
+			display.menu.clearLobby(lobby);
 			display.menu.drawOnlineDynamic(0, 2, controller.onlineBuffer);
-			sendEvent('leave');
-			socket.destroy();
+			request('leave').then(() => {
+				socket.destroy();
+			});
 		} else if (controller.tab) {
 			getPing().then((ping) => {
 				process.stdout.cursorTo(1, 10);

@@ -119,8 +119,8 @@ const MenuDisplay = function(d) {
 		});
 	}
 
-	this.draw = async function(name, arguments) {
-		await this.waitForAnimation();
+	this.drawAsync = async function(name, arguments) {
+		if (animating) await this.waitForAnimation();
 		this[name](...arguments);
 	}
 
@@ -359,30 +359,50 @@ const MenuDisplay = function(d) {
 		console.log(textChange);
 	}
 
+	// LOBBY //
+
+	function getYFromIndex(index) { return optionsY + 3 * index; }
+	const divider = '─'.repeat(logoEndX - lobbyX);
+	function toggleDivider(y, draw) {
+		const char = draw ? '─' : ' ';
+		const width = logoEndX - lobbyX;
+		d.draw(char.repeat(width), lobbyX, y);
+	}
 	this.drawLobbyStatic = function(lobby) {
 		let playerCount = lobby.size;
 		d.setFg('magenta');
-		const divider = '─'.repeat(logoEndX - lobbyX);
-		d.draw(divider, lobbyX, optionsY - 1);
+		toggleDivider(optionsY - 1, true);
 		let i = 0;
 		lobby.forEach(player => {
-			const y = optionsY + 3 * i;
+			const y = getYFromIndex(i);
 			drawPlayerInfo(player, y);
 			d.setFg('magenta');
 			// if (i < playerCount - 1)
-			d.draw(divider, lobbyX, y + 2);
+			toggleDivider(y + 2, true);
 			i++;
 		});
 	}
 	function drawPlayerInfo(player, y, clear = false) {
-		let str;
-		if (clear) str = ' '.repeat(player.name.length);
-		else str = player.name;
-		if (player.you) {
-			if (!clear) str = str.concat(' (YOU)');
-			d.setFg('cyan');
-		} else d.setFg('white');
-		d.draw(str, lobbyX, y);
+		let name, ready;
+		if (clear) { 
+			d.draw(' '.repeat(player.name.length + 6 * (player.you)), lobbyX, y);
+			ready = ' '.repeat(5 + 4 * (!player.ready));
+		} else {
+			name = player.name;
+			if (player.you) {
+				name = name.concat(' (YOU)');
+				d.setFg('cyan');
+			} else d.setFg('white');
+			d.draw(name, lobbyX, y);
+			if (player.ready) {
+				d.setFg('green');
+				ready = 'READY';
+			} else {
+				d.setFg('red');
+				ready = 'NOT READY';
+			}
+		}
+		d.draw(ready, lobbyX, y + 1);
 		drawPlayerConnectionInfo(player, y);
 	}
 	function drawPlayerConnectionInfo(player, y) {
@@ -393,24 +413,39 @@ const MenuDisplay = function(d) {
 		stdout.write('|'.repeat(bars));
 		d.setFg('white');
 		stdout.write('|'.repeat(12 - bars));
-		if (player.ready) {
-			d.setFg('green');
-			d.draw('READY', lobbyX, y + 1);
-		} else {
-			d.setFg('red');
-			d.draw('NOT READY', lobbyX, y + 1);
-		}
 		d.setFg('white');
 		d.draw('Ping:', logoEndX - 12, y + 1);
 		const pingString = ping.toString();
 		d.draw(' '.repeat(4 - pingString.length) + pingString + 'ms', logoEndX - 6, y + 1);
 	}
+	function clearPlayerConnectionInfo(y) {
+		d.draw(' '.repeat(12), logoEndX - 12, y);
+		d.draw(' '.repeat(12), logoEndX - 12, y + 1);
+	}
 	this.addPlayerToLobby = function(player, index) {
-		const y = optionsY + 3 * index;
+		const y = getYFromIndex(index);
 		drawPlayerInfo(player, y);
 		drawPlayerConnectionInfo(player, y);
+		d.setFg('magenta');
+		toggleDivider(y + 2, true);
 	}
 	this.removePlayerFromLobby = function(lobby, id) {
+		let looking = true;
+		let i = 0;
+		lobby.forEach(player => {
+			const y = getYFromIndex(i);
+			if (looking)
+				if (player.id == id) {
+					drawPlayerInfo(player, y, true);
+					clearPlayerConnectionInfo(y);
+					toggleDivider(y + 2, false);
+					looking = false;
+				}
+			else {
+				d.draw('marked', lobbyX + 20, y);
+			}
+			i++;
+		});
 	}
 	this.drawLobbyConnectionInfo = function(lobby) {
 		let i = 0;
@@ -418,6 +453,21 @@ const MenuDisplay = function(d) {
 			drawPlayerConnectionInfo(player, optionsY + 3 * i);
 			i++;
 		});
+	}
+	this.clearLobby = function(lobby) {
+		toggleDivider(optionsY - 1, false);
+		let i = 0;
+		lobby.forEach(player => {
+			const y = getYFromIndex(i);
+			drawPlayerInfo(player, y, true);
+			clearPlayerConnectionInfo(y);
+			toggleDivider(y + 2, false);
+			i++;
+		});
+	}
+	this.debugLobby = function(lobby) {
+		stdout.cursorTo(2,2);
+		console.log(lobby);
 	}
 }
 

@@ -29,9 +29,9 @@ net.createServer((socket) => {
 
 	const connectionTimestamp = Date.now();
 	socket.on('connection', (playerData) => {
-		const hash = Buffer.from(playerData.hash);
+		const hash = playerData.hash;
 		socket.id = hash;
-		sockets.set(playerData.hash, socket);
+		sockets.set(hash, socket);
 
 		const now = Date.now() + Math.floor(Math.random() * 200);
 		playerData['ping'] = Math.floor((now - connectionTimestamp) / 2);
@@ -58,13 +58,14 @@ net.createServer((socket) => {
 	});
 
 	socket.on('leave', () => {
-		players.delete(socket.id);
-		console.log(players);
+		sendLobbyEvent('leave', socket.id);
+		socket.sendEvent('leave');
 	});
 
-	socket.on('close', function(data) {
-		console.log(data);
+	socket.on('close', () => {
 		console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
+		players.delete(socket.id);
+		console.log(players);
 		clearInterval(pingInterval);
 	});
 
@@ -105,10 +106,7 @@ function getLobbyInfo() {
 }
 function sendLobbyEvent(type, id) {
 	players.forEach(player => {
-		const buffer = Buffer.from(player.id);
-		console.log(player.name);
-		console.log(player.connected && buffer.compare(id) != 0);
-		if (player.connected && buffer.compare(id) != 0) {
+		if (player.connected && player.id != id) {
 			const socket = sockets.get(player.id);
 			const affectedPlayer = players.get(id);
 			const json = {type: type, player: affectedPlayer};
@@ -123,7 +121,6 @@ function getPlayerPings() {
 	});
 	return json;
 }
-// function sendDisconnect
 
 const Player = function(playerData) {
 	this.id = playerData.hash;
