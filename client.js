@@ -164,10 +164,14 @@ async function updateOnline() {
 	if (controller.onlineStage == 0) {
 		if (controller.esc) switchTo('menu');
 		// Moving through menu
-		if (prevOnlineOption != controller.onlineOption)
+		else if (prevOnlineOption != controller.onlineOption) {
+			if (display.menu.isAnimating()) {
+				controller.onlineOption = prevOnlineOption;
+				return;
+			}
 			display.menu.drawOnlineDynamic(controller.onlineOption, prevOnlineOption, controller.onlineBuffer);
 		// Text update
-		if (controller.textChange != null) {
+		} else if (controller.textChange != null) {
 			display.menu.drawOnlineBuffer(controller.textChange);
 			// Form validation for connect button
 			if (prevAllFieldsFilled != controller.allFieldsFilled)
@@ -258,7 +262,7 @@ function startScreen(name, prevName = 'none') {
 			];
 			controller.allFieldsFilled = true;
 			const params = [controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled];
-			display.menu.drawAsync('drawOnlineStatic', params, 175);
+			display.menu.drawAsync('drawOnlineStatic', params);
 		} else if (prevName == 'online') {
 			display.menu.drawLogo();
 			if (controller.onlineStage == 1) display.menu.drawConnectionLoading();
@@ -283,8 +287,7 @@ keypress(process.stdin);
 process.stdin.setRawMode(true);
 
 process.stdin.on('keypress', function(chunk, key) {
-	process.stdout.cursorTo(0,0); console.log(display.menu.isAnimating());
-	if (currentlyResizing || display.menu.isAnimating()) return;
+	if (currentlyResizing) return;
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
 	if (controller.esc && screen == 'menu' || (keyPressed == 'c' && key.ctrl)) {
