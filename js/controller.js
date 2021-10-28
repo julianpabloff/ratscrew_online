@@ -1,26 +1,35 @@
 const Controller = function() {
-	this.update = function(key, shift) {
+	this.update = function(key, shift = false, ctrl = false) {
 		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
 		this.space = this.backspace = this.alphaNum = false;
+		this.selectAll = this.copy = this.paste = false;
 		switch (key) {
-			case "escape" : this.esc = true; break;
-			case "left" : this.left = true; break;
-			case "right" : this.right = true; break;
-			case "up" : this.up = true; break;
-			case "down" : this.down = true; break;
-			case "tab" : this.tab = true; break;
-			case "return" : this.enter = true; break;
-			case "space" : this.space = true; break;
-			case "backspace" : this.backspace = true; break;
+			case 'escape' : this.esc = true; break;
+			case 'left' : this.left = true; break;
+			case 'right' : this.right = true; break;
+			case 'up' : this.up = true; break;
+			case 'down' : this.down = true; break;
+			case 'tab' : this.tab = true; break;
+			case 'return' : this.enter = true; break;
+			case 'space' : this.space = true; break;
+			case 'backspace' : this.backspace = true; break;
 		}
 		if (key != undefined && key.length == 1) {
 			let charCode = key.charCodeAt(0);
-			// console.log(charCode);
-			if (charCode >= 97 && charCode <= 122 && shift)
-				key = key.toUpperCase();
-			this.alphaNum = key;
-			// console.log(this.alphaNum);
+			if (ctrl)
+				switch (key) {
+					case 'a' : this.selectAll = this.onlineOption; return true;
+					case 'c' : this.copy = this.onlineOption; return true;
+					case 'v' : this.paste = this.onlineOption; return true;
+					default: return false;
+				}
+			else {
+				if (charCode >= 97 && charCode <= 122 && shift)
+					key = key.toUpperCase();
+				this.alphaNum = key;
+			}
 		}
+		return true;
 	}
 	this.update();
 
@@ -40,10 +49,6 @@ const Controller = function() {
 	}
 
 	this.onlineStage = 0;
-	// this.onlineBuffer = [
-	// 	{ name: 'Server Address', content: [] },
-	// 	{ name: 'Your Name', content: [] },
-	// ];
 	this.onlineBuffer = [[],[]];
 	this.onlineOption = 0;
 	this.allFieldsFilled = false;

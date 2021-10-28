@@ -1,8 +1,7 @@
 const net = require('net');
 const crypto = require('crypto');
-// const host = '127.0.0.1';
-const host = '192.168.0.106';
-const port = 6969;
+// const host = '192.168.0.106';
+// const port = 6969;
 
 // Socket
 const socket = new net.Socket();
@@ -199,19 +198,18 @@ async function updateOnline() {
 			controller.onlineStage = 1;
 			const input = controller.onlineBuffer[0].join('');
 			const params = input.split(':');
-			// const host = params[0];
-			// const port = parseInt(params[1]);
+			const host = params[0];
+			const port = parseInt(params[1]);
 			if (port >= 65536 || port == 0) {
 				displayConnectionError('Port should be in between 1 and 65535');
 				return;
 			}
 			playerName = controller.onlineBuffer[1].join('');
-			const delayConnection = setTimeout(() => {
-				socket.connect(port, host);
-			}, 1300);
+			socket.connect(port, host); 
 			pendingConnections++;
-			process.stdout.cursorTo(4, 50);
-			// socket.connect(port, host); 
+			// const delayConnection = setTimeout(() => {
+			// 	socket.connect(port, host);
+			// }, 1300);
 			display.menu.drawOnlineSelection(controller.onlineOption);
 			display.menu.drawConnectionLoading();
 			display.menu.hideConnectionError();
@@ -273,12 +271,13 @@ function startScreen(name, prevName = 'none') {
 		// display.menu.drawDynamic(controller.menuOption);
 	} else if (name == 'online') {
 		if (prevName == 'menu') {
-			controller.onlineOption = 0;
-			controller.onlineBuffer = [
-				['s', 'e', 'r', 'v', 'e', 'r', ':', '4', '2', '0'],
-				['j', 'u', 'l', 'i', 'a', 'n', Math.floor(Math.random() * 10).toString(), Math.floor(Math.random() * 10).toString()]
-			];
-			controller.allFieldsFilled = true;
+			// prevAllFieldsFilled = true;
+			// controller.onlineOption = 0;
+			// controller.onlineBuffer = [
+			// 	['s', 'e', 'r', 'v', 'e', 'r', ':', '4', '2', '0'],
+			// 	['j', 'u', 'l', 'i', 'a', 'n', Math.floor(Math.random() * 10).toString(), Math.floor(Math.random() * 10).toString()]
+			// ];
+			// controller.allFieldsFilled = true;
 			const params = [controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled];
 			display.menu.drawAsync('drawOnlineStatic', params);
 		} else if (prevName == 'online') {
@@ -306,14 +305,16 @@ process.stdin.setRawMode(true);
 
 process.stdin.on('keypress', function(chunk, key) {
 	if (currentlyResizing) return;
-	let keyPressed = (key == undefined) ? chunk : key.name;
-	controller.update(keyPressed, (key == undefined) ? false : key.shift);
-	if (controller.esc && screen == 'menu' || (keyPressed == 'c' && key.ctrl)) {
+	const keyPressed = (key == undefined) ? chunk : key.name;
+	let params = [keyPressed];
+	if (key != undefined) params.push(key.shift, key.ctrl);
+	const keyValid = controller.update(...params);
+	if (controller.esc && screen == 'menu') {
 		socket.destroy();
 		display.exit();
 		process.exit();
 	}
-    update();
+    if (keyValid) update();
 	// if (game.players.length > 0) controller.updatePlayerControls(game.players, keyPressed);
 	// updateDynamic();
 });

@@ -290,7 +290,7 @@ const MenuDisplay = function(d) {
 		}
 		function makeLoadingDot() {
 			if (increment == 3 || !loadingDotsActive) clearInterval(makeLoadingDots);
-			else {
+			else if (loadingDotsActive) {
 				const x = logoX + increment;
 				const y = optionsY + 6;
 				drawLoadingDot(x, y, true);
@@ -310,7 +310,7 @@ const MenuDisplay = function(d) {
 	this.clearConnectionLoading = function(drawOverDots) {
 		loadingDotsActive = false;
 		for (dotLoop of loadingDots) clearInterval(dotLoop);
-		if (drawOverDots) d.draw('   ', dotObjects[0].x, dotObjects[0].y);
+		if (drawOverDots && dotObjects.length > 0) d.draw('   ', dotObjects[0].x, dotObjects[0].y);
 		dotObjects = [];
 	}
 
