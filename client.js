@@ -74,7 +74,7 @@ socket.on('connect', () => {
 		// sendEvent('connection', playerData);
 		request('connection', playerData).then(lobbyData => {
 			processLobbyData(lobbyData);
-			display.menu.clearConnectionLoading(display.connectionMessageStage != null);
+			display.menu.clearConnectionLoading(true);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
 			display.menu.drawLobbyStatic(lobby);
 			controller.onlineStage = 2;
@@ -96,13 +96,12 @@ socket.on('lobbyChange', data => {
 	// enter, leave, disconnect, reconnect, ready
 	const player = data.player;
 	if (data.type == 'enter') {
+		player.you = false;
 		lobby.set(player.id, player);
-		display.menu.debugLobby(lobby);
 		display.menu.addPlayerToLobby(player, lobby.size - 1);
 	} else if (data.type == 'leave') {
 		display.menu.removePlayerFromLobby(lobby, player.id);
 		lobby.delete(player.id);
-		display.menu.debugLobby(lobby);
 	}
 });
 socket.on('serverPing', () => {
@@ -186,15 +185,16 @@ async function updateOnline() {
 				return;
 			}
 			playerName = controller.onlineBuffer[1].join('');
-			const delayConnection = setTimeout(() => { socket.connect(port, host); }, 1000);
+			const delayConnection = setTimeout(() => {
+				socket.connect(port, host);
+			}, 1300);
 			pendingConnections++;
 			process.stdout.cursorTo(4, 50);
 			// socket.connect(port, host); 
 			display.menu.drawOnlineSelection(controller.onlineOption);
 			display.menu.drawConnectionLoading();
 			display.menu.hideConnectionError();
-			display.menu.showConnectingMessage(0, 1000);
-			display.menu.showConnectingMessage(1, 3000);
+			display.menu.showConnectingMessages(1000, 3000);
 		}
 	} else if (controller.onlineStage == 1) {
 		if (controller.esc) {
@@ -252,9 +252,13 @@ function startScreen(name, prevName = 'none') {
 	} else if (name == 'online') {
 		if (prevName == 'menu') {
 			controller.onlineOption = 0;
-			const wait = setTimeout(() => {
-				display.menu.drawOnlineStatic(controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled)
-			}, display.menu.animationDuration + 200);
+			controller.onlineBuffer = [
+				['s', 'e', 'r', 'v', 'e', 'r', ':', '4', '2', '0'],
+				['j', 'u', 'l', 'i', 'a', 'n', Math.floor(Math.random() * 10).toString(), Math.floor(Math.random() * 10).toString()]
+			];
+			controller.allFieldsFilled = true;
+			const params = [controller.onlineOption, controller.onlineBuffer, controller.allFieldsFilled];
+			display.menu.drawAsync('drawOnlineStatic', params, 175);
 		} else if (prevName == 'online') {
 			display.menu.drawLogo();
 			if (controller.onlineStage == 1) display.menu.drawConnectionLoading();
@@ -279,7 +283,8 @@ keypress(process.stdin);
 process.stdin.setRawMode(true);
 
 process.stdin.on('keypress', function(chunk, key) {
-	if (currentlyResizing) return;
+	process.stdout.cursorTo(0,0); console.log(display.menu.isAnimating());
+	if (currentlyResizing || display.menu.isAnimating()) return;
 	let keyPressed = (key == undefined) ? chunk : key.name;
 	controller.update(keyPressed, (key == undefined) ? false : key.shift);
 	if (controller.esc && screen == 'menu' || (keyPressed == 'c' && key.ctrl)) {

@@ -55,6 +55,7 @@ const MenuDisplay = function(d) {
 
 	this.animationDuration = 250;
 	let animating = false;
+	this.animating = false;
 	function dissolve(width, x, y, duration, content = false, color = false) {
 		let positions = [];
 		let sequence = [];
@@ -76,7 +77,7 @@ const MenuDisplay = function(d) {
 		function dissolveHelper() {
 			if (increment == width) {
 				clearInterval(dissolveInterval);
-				animating = false;
+				this.animating = false;
 				displayEmitter.emit('doneAnimating');
 			}
 			else {
@@ -87,6 +88,7 @@ const MenuDisplay = function(d) {
 			}
 		}
 		animating = true;
+		this.animating = true;
 		const dissolveInterval = setInterval(dissolveHelper, duration / width);
 	}
 
@@ -100,7 +102,7 @@ const MenuDisplay = function(d) {
 			if (position == distance) {
 				d.draw(' ', x - 2 + position, y);
 				clearInterval(moveRight);
-				animating = false;
+				this.animating = false;
 				displayEmitter.emit('doneAnimating');
 			} else {
 				d.draw(' > ', x - 2 + position, y);
@@ -108,19 +110,25 @@ const MenuDisplay = function(d) {
 			}
 		}
 		animating = true;
+		this.animating = true;
 		moveRight = setInterval(drawAnimation, Math.floor(duration/distance));
 	}
 
-	this.waitForAnimation = async function() {
+
+	this.isAnimating = function() { return animating; }
+	this.waitForAnimation = async function(delay) {
 		return new Promise(function(resolve, reject) {
 			displayEmitter.once('doneAnimating', () => {
-				resolve();
+				setTimeout(() => {
+					animating = false;
+					resolve();
+				}, delay);
 			});
 		});
 	}
 
-	this.drawAsync = async function(name, arguments) {
-		if (animating) await this.waitForAnimation();
+	this.drawAsync = async function(name, arguments, delay = 0) {
+		if (animating) await this.waitForAnimation(delay);
 		this[name](...arguments);
 	}
 
@@ -322,22 +330,27 @@ const MenuDisplay = function(d) {
 
 	this.connectionMessageStage = null;
 	const connectionProgessMessages = ['Connecting', 'Press ESC to cancel'];
+	let connectionMessageStage = 0;
 	let connectionTimeouts = [];
-	this.showConnectingMessage = function(messageIndex, delay) {
-		const message = connectionProgessMessages[messageIndex];
-		const y = optionsY + 3 * onlineOptions.length - 1;
-		connectionTimeouts.push(setTimeout(() => {
-			d.setFg('red');
-			d.draw(message, logoX, y);
-		}, delay));
-		this.connectionMessageStage = messageIndex;
+	this.showConnectingMessages = function() {
+		for (let i = 0; i < arguments.length; i++) {
+			const message = connectionProgessMessages[i];
+			const y = getYFromIndex(onlineOptions.length) - 1;
+			connectionTimeouts.push(setTimeout(() => {
+				d.setFg('red');
+				d.draw(message, logoX, y);
+			}, arguments[i]));
+			this.connectionMessageStage = i;
+		}
 	}
 	this.hideConnectingMessage = function(messageIndex) {
+		for (let timeout of connectionTimeouts)
+			clearTimeout(timeout);
+		if (messageIndex == null) return;
 		const message = connectionProgessMessages[messageIndex];
 		const y = optionsY + 3 * onlineOptions.length - 1;
 		d.draw(' '.repeat(message.length), logoX, y);
-		for (let timeout of connectionTimeouts)
-			clearTimeout(timeout);
+		messageIndex = null;
 	}
 	let connectionError = '';
 	this.showConnectionError = function(message) {
@@ -385,9 +398,12 @@ const MenuDisplay = function(d) {
 	function drawPlayerInfo(player, y, clear = false) {
 		let name, ready;
 		if (clear) { 
-			d.draw(' '.repeat(player.name.length + 6 * (player.you)), lobbyX, y);
+			stdout.cursorTo(1,6);
+			console.log(player);
+			d.draw(' '.repeat(player.name.length + (player.you) * 6), lobbyX, y);
 			ready = ' '.repeat(5 + 4 * (!player.ready));
 		} else {
+			d.draw('drawing player ' + player.id, 1, 8);
 			name = player.name;
 			if (player.you) {
 				name = name.concat(' (YOU)');
@@ -403,7 +419,6 @@ const MenuDisplay = function(d) {
 			}
 		}
 		d.draw(ready, lobbyX, y + 1);
-		drawPlayerConnectionInfo(player, y);
 	}
 	function drawPlayerConnectionInfo(player, y) {
 		const ping = player.ping;
@@ -430,18 +445,22 @@ const MenuDisplay = function(d) {
 		toggleDivider(y + 2, true);
 	}
 	this.removePlayerFromLobby = function(lobby, id) {
+		d.setFg('white');
+		d.draw(id, 1, 1);
 		let looking = true;
 		let i = 0;
 		lobby.forEach(player => {
+			d.setFg('white');
+			d.draw(player.name + ' - ' + player.id, 1, 2 + i);
 			const y = getYFromIndex(i);
-			if (looking)
+			if (looking) {
 				if (player.id == id) {
 					drawPlayerInfo(player, y, true);
 					clearPlayerConnectionInfo(y);
 					toggleDivider(y + 2, false);
 					looking = false;
 				}
-			else {
+			} else {
 				d.draw('marked', lobbyX + 20, y);
 			}
 			i++;
