@@ -73,6 +73,7 @@ socket.on('connect', () => {
 		}
 		// sendEvent('connection', playerData);
 		request('connection', playerData).then(lobbyData => {
+			connected = true;
 			processLobbyData(lobbyData);
 			display.menu.clearConnectionLoading(true);
 			display.menu.hideConnectingMessage(display.menu.connectionMessageStage);
@@ -91,31 +92,47 @@ function processLobbyData(lobbyData) {
 		lobby.set(player.id, player);
 	}
 }
-socket.on('lobbyChange', data => {
+socket.on('lobbyEvent', event => {
 	// Lobby commands
 	// enter, leave, disconnect, reconnect, ready
-	const player = data.player;
-	if (data.type == 'enter') {
+	const player = event.player;
+	const type = event.type;
+	if (type == 'enter') {
 		player.you = false;
 		lobby.set(player.id, player);
 		display.menu.addPlayerToLobby(player, lobby.size - 1);
-	} else if (data.type == 'leave') {
+	} else if (type == 'leave') {
 		display.menu.removePlayerFromLobby(lobby, player.id);
 		lobby.delete(player.id);
+	} else if (type == 'disconnect') {
+		lobby.get(player.id).connected = player.connected;
 	}
 });
 socket.on('serverPing', () => {
+	connected = true;
+	lobby.get(hash).connected = true;
+	process.stdout.cursorTo(1, 20);
+	console.log('connected');
 	sendEvent('serverPing');
 });
-socket.on('playerPings', pingData => {
+socket.on('playerPings', connectionData => {
 	lobby.forEach(player => {
-		player.ping = pingData[player.id];
+		const playerConnectionData = connectionData[player.id];
+		player.ping = playerConnectionData.ping;
+		player.connected = playerConnectionData.connected;
 	});
 	if (screen == 'online')
 		display.menu.drawLobbyConnectionInfo(lobby);
 });
-socket.on('playerDisconnect', id => {
-	lobby.delete(id);
+let connected = false;
+socket.setTimeout(3000);
+socket.on('timeout', () => {
+	if (connected) {
+		process.stdout.cursorTo(1, 20);
+		lobby.get(hash).connected = false;
+		console.log('timed out');
+		connected = false;
+	}
 });
 /*
 socket.on('close', function() {
@@ -220,9 +237,10 @@ async function updateOnline() {
 			controller.onlineOption = 0;
 			display.menu.clearLobby(lobby);
 			display.menu.drawOnlineDynamic(0, 2, controller.onlineBuffer);
-			request('leave').then(() => {
+			lobby.clear();
+			// request('leave').then(() => {
 				socket.destroy();
-			});
+			// });
 		} else if (controller.tab) {
 			getPing().then((ping) => {
 				process.stdout.cursorTo(1, 10);

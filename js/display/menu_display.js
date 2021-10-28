@@ -392,6 +392,7 @@ const MenuDisplay = function(d) {
 		lobby.forEach(player => {
 			const y = getYFromIndex(i);
 			drawPlayerInfo(player, y);
+			drawPlayerConnectionInfo(player, y);
 			d.setFg('magenta');
 			// if (i < playerCount - 1)
 			toggleDivider(y + 2, true);
@@ -422,21 +423,34 @@ const MenuDisplay = function(d) {
 		d.draw(ready, lobbyX, y + 1);
 	}
 	function drawPlayerConnectionInfo(player, y) {
-		const ping = player.ping;
-		const bars = Math.ceil(12 / ((ping / 50) ** 1.5 + 1));
-		stdout.cursorTo(logoEndX - 12, y);
-		d.setFg('green');
-		stdout.write('|'.repeat(bars));
-		d.setFg('white');
-		stdout.write('|'.repeat(12 - bars));
-		d.setFg('white');
-		d.draw('Ping:', logoEndX - 12, y + 1);
-		const pingString = ping.toString();
-		d.draw(' '.repeat(4 - pingString.length) + pingString + 'ms', logoEndX - 6, y + 1);
+		if (player.connected) {
+			let ping = player.ping;
+			const bars = Math.ceil(12 / ((ping / 50) ** 1.5 + 1));
+			stdout.cursorTo(logoEndX - 12, y);
+			d.setFg('green');
+			stdout.write('|'.repeat(bars));
+			d.setFg('white');
+			stdout.write('|'.repeat(12 - bars));
+			d.setFg('white');
+			d.draw('Ping:', logoEndX - 12, y + 1);
+			if (ping > 9999) ping = 9999;
+			const pingString = ping.toString();
+			d.draw(' '.repeat(4 - pingString.length) + pingString + 'ms', logoEndX - 6, y + 1);
+		} else {
+			d.draw('disconnected', logoEndX - 12, y);
+			d.draw('Ping:   ----', logoEndX - 12, y + 1);
+		}
 	}
 	function clearPlayerConnectionInfo(y) {
 		d.draw(' '.repeat(12), logoEndX - 12, y);
 		d.draw(' '.repeat(12), logoEndX - 12, y + 1);
+	}
+	this.drawLobbyConnectionInfo = function(lobby) {
+		let i = 0;
+		lobby.forEach(player => {
+			drawPlayerConnectionInfo(player, optionsY + 3 * i);
+			i++;
+		});
 	}
 	this.addPlayerToLobby = function(player, index) {
 		const y = getYFromIndex(index);
@@ -450,23 +464,23 @@ const MenuDisplay = function(d) {
 		let i = 0;
 		lobby.forEach(player => {
 			const y = getYFromIndex(i);
+			const atEnd = (i == lobby.size - 1);
 			if (looking) {
 				if (player.id == id) {
 					drawPlayerInfo(player, y, true);
 					clearPlayerConnectionInfo(y);
-					toggleDivider(y + 2, false);
 					looking = false;
 				}
 			} else {
-				d.draw('marked', lobbyX + 20, y);
+				const aboveY = getYFromIndex(i - 1);
+				drawPlayerInfo(player, aboveY);
+				drawPlayerConnectionInfo(player, aboveY);
+				if (atEnd) {
+					drawPlayerInfo(player, y, true);
+					clearPlayerConnectionInfo(y);
+				}
 			}
-			i++;
-		});
-	}
-	this.drawLobbyConnectionInfo = function(lobby) {
-		let i = 0;
-		lobby.forEach(player => {
-			drawPlayerConnectionInfo(player, optionsY + 3 * i);
+			if (atEnd) toggleDivider(y + 2, false);
 			i++;
 		});
 	}

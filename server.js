@@ -42,15 +42,17 @@ net.createServer((socket) => {
 		sendLobbyEvent('enter', hash);
 	});
 
+	/*
 	socket.setTimeout(5000);
-	socket.on('timeout', () => {
+	socket.on('timeout', (data) => {
 		console.log('socket timeout');
-		players[socket.id].connected = false;
-		//clearInterval(pingInterval);
+		players.get(socket.id).connected = false;
 		// Tell the other players about the disconnect
+		sendLobbyEvent('disconnect', socket.id);
 		// Pause the game or lobby
 		// Kick player after inactivity
 	});
+	*/
 
 	socket.on('clientPing', () => { 
 		socket.sendEvent('clientPing');
@@ -58,34 +60,40 @@ net.createServer((socket) => {
 	});
 
 	socket.on('leave', () => {
-		sendLobbyEvent('leave', socket.id);
 		socket.sendEvent('leave');
 	});
 
 	socket.on('close', () => {
 		console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
+		sendLobbyEvent('leave', socket.id);
 		players.delete(socket.id);
 		console.log(players);
 		clearInterval(pingInterval);
+	});
+
+	socket.on('error', (error) => {
+		console.log(error);
 	});
 
 	let pinging = false;
 	async function getPing() {
 		// This is to make sure players are connected
 		// and also to send out everyone's ping for the lobby screen
+		const player = players.get(socket.id);
 		if (!pinging) {
 			pinging = true;
 			const start = Date.now();
 			await socket.request('serverPing');
 			// const end = Date.now();
-			const now = Date.now() + Math.floor(Math.random() * 200);
+			const end = Date.now() + Math.floor(Math.random() * 200);
 			pinging = false;
-			const player = players.get(socket.id);
-			player.ping = Math.floor((now - start) / 2);
+			player.ping = Math.floor((end - start) / 2);
 			console.log(player.name + ' has ping: ' + player.ping);
-			// sendLobbyInfo();
 			socket.sendEvent('playerPings', getPlayerPings());
+		} else {
+			console.log(player.name + ' not responding');
 		}
+		player.connected = !pinging;
 	}
 	const pingInterval = setInterval(getPing, 2500);
 
@@ -110,14 +118,17 @@ function sendLobbyEvent(type, id) {
 			const socket = sockets.get(player.id);
 			const affectedPlayer = players.get(id);
 			const json = {type: type, player: affectedPlayer};
-			socket.sendEvent('lobbyChange', json);
+			socket.sendEvent('lobbyEvent', json);
 		}
 	});
 }
 function getPlayerPings() {
 	const json = {};
 	players.forEach((player) => {
-		json[player.id] = player.ping;
+		json[player.id] = {
+			ping: player.ping,
+			connected: player.connected
+		};
 	});
 	return json;
 }
