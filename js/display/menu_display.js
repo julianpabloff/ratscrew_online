@@ -35,14 +35,13 @@ const MenuDisplay = function(d) {
 	this.setSize();
 
 	this.drawLogo = function() {
-		const offset = Math.floor(logo.length / 2) - 2;
-		const logoLength = logo.length;
-		for (let i = 0; i < logoLength; i++) {
+		const offset = Math.floor(logoHeight / 2) - 2;
+		for (let i = 0; i < logoHeight; i++) {
 			const x = (logoX - offset + i - (i > 6) * 4);
 			const y = (logoY + i);
 			stdout.cursorTo(x, y);
 			let currentChar = '';
-			for (let j = 0; j < logo[i].length; j++) {
+			for (let j = 0; j < logoWidth; j++) {
 				const char = logo[i][j];
 				if (char != currentChar && char != ' ') currentChar = char;
 				if (currentChar == '\\') d.setFg('magenta');
