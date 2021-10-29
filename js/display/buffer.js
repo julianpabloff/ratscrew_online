@@ -32,12 +32,21 @@ const DisplayBuffer = function(x, y, width, height) {
 		
 	}
 
+	let drawingColor = 0;
+	this.setFg = function(foreground) {
+		const fgCode = colorCodes[foreground];
+		drawingColor = (fgCode << 4) + (drawingColor & 0x0F);
+	}
+	this.setBg = function(background) {
+		const bgCode = colorCodes[background];
+		drawingColor = ((drawingColor >> 4) << 4) + bgCode;
+	}
 	function coordinateIndex(x, y) { return (y * width) + x; }
 	this.draw = function(string, x, y, foreground = 'reset', background = 'reset') {
 		const index = coordinateIndex(x, y);
 		for (let i = 0; i < string.length; i++) {
 			this.current[index + i] = string.charCodeAt(i);
-			this.colors[index + i] = convertToColorCode(foreground, background);
+			this.colors[index + i] = drawingColor;
 		}
 	}
 
@@ -46,12 +55,26 @@ const DisplayBuffer = function(x, y, width, height) {
 		process.stdout.write(string);
 	}
 	let drawCount = 0;
-	let currentColor = 0;
+	let colorChangeCount = 0;
+	let currentColor = { fg: 0, bg: 0 };
 	this.render = function() {
 		for (let i = 0; i < this.size; i++) {
 			const code = this.current[i];
 			const prevCode = this.previous[i];
+			const colorCode = this.colors[i];
+			const fgCode = colorCode >> 4;
+			const bgCode = colorCode & 0x0F;
 			if (code != prevCode) {
+				if (fgCode != currentColor.fg) {
+					process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
+					currentColor.fg = fgCode;
+					colorChangeCount++;
+				}
+				if (bgCode != currentColor.bg) {
+					process.stdout.write('\x1b[' + (39 * (bgCode != 0) + bgCode).toString() + 'm');
+					currentColor.bg = bgCode;
+					colorChangeCount++;
+				}
 				const x = i % this.width;
 				const y = Math.floor(i / this.width);
 				drawToScreen(String.fromCharCode(code), this.x + x, this.y + y);
@@ -64,6 +87,9 @@ const DisplayBuffer = function(x, y, width, height) {
 		drawToScreen('                          ', 10, 5);
 		drawToScreen('painted ' + drawCount.toString() + ' chars', 10, 5);
 		drawCount = 0;
+		process.stdout.cursorTo(5, 10 + 3 * colorChangeCount + 1);
+		// console.log(colorChangeCount);
+		colorChangeCount = 0;
 	}
 	this.clear = function() {
 		this.current = initBuffer(this.size);
@@ -141,20 +167,13 @@ async function test() {
 	const bufferY = Math.floor(rows / 2 - bufferHeight / 2);
 
 	const buffer = new DisplayBuffer(bufferX, bufferY, bufferWidth, bufferHeight);
+	stdout.write('\x1b[0m');
 	drawBox(bufferX - 1, bufferY - 1, bufferWidth + 2, bufferHeight + 2);
 
-	/*
-	await wait(1000);
-	buffer.draw('hello world', 3, 4);
+	buffer.setFg('yellow');
+	buffer.setBg('blue');
+	buffer.draw('julian', 10, 10);
 	buffer.render();
-	await wait(1000);
-	buffer.draw('hello world', 5, 4);
-	buffer.render();
-	await wait(1000);
-	buffer.draw('hello world', 10, 3);
-	buffer.draw('hello world', 17, 18);
-	buffer.render();
-	*/
 
 	stdout.cursorTo(0, rows - 2);
 	stdout.write('\x1b[?25h\x1b[0m'); // show cursor
