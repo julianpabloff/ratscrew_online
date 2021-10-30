@@ -1,9 +1,40 @@
-const DisplayBuffer = function(x, y, width, height) {
+const BufferManager = function() {
+	this.screens = {};
+	this.color = 0;
+	this.lastRenderedColor = 0;
+	this.colors = { reset: 0, black: 1, red: 2, green: 3, yellow: 4, blue: 5, magenta: 6, cyan: 7, white: 8 };
+
+	this.addBuffer = function(buffer, screen) {
+		let bufferArray = this.screens[screen];
+		if (bufferArray == undefined)
+			bufferArray = [];
+		bufferArray.push(buffer);
+	}
+	this.setFg = function(color) {
+		const fgCode = this.colors[color];
+		this.color = (fgCode << 4) + (this.color & 0x0F);
+	}
+	this.setBg = function(color) {
+		const bgCode = this.colors[color];
+		this.color = (this.color & 0xF0) + bgCode;
+	}
+	this.setColor = function(foreground, background) {
+		const fgCode = this.colors[foreground];
+		const bgCode = this.colors[background];
+		this.color = (fgCode << 4) + bgCode;
+	}
+	this.resetColor = function() {
+		this.color = 0;
+	}
+}
+
+const DisplayBuffer = function(x, y, width, height, manager) {
 	this.x = x;
 	this.y = y;
 	this.width = width;
 	this.height = height;
 	this.size = width * height;
+	this.empty = true;
 
 	function bufferWithSpaces(size) {
 		let buffer = new Uint8Array(size);
@@ -17,34 +48,13 @@ const DisplayBuffer = function(x, y, width, height) {
 	this.colors = new Uint8Array(this.size);
 	this.prevColors = new Uint8Array(this.size);
 
-
-	// Managing color codes
-	const colors = { reset: 0, black: 1, red: 2, green: 3, yellow: 4, blue: 5, magenta: 6, cyan: 7, white: 8 };
-	let drawingColor = 0;
-	this.setFg = function(foreground) {
-		const fgCode = colors[foreground];
-		drawingColor = (fgCode << 4) + (drawingColor & 0x0F);
-	}
-	this.setBg = function(background) {
-		const bgCode = colors[background];
-		drawingColor = ((drawingColor >> 4) << 4) + bgCode;
-	}
-	this.setColor = function(foreground, background) {
-		const fgCode = colors[foreground];
-		const bgCode = colors[background];
-		drawingColor = (fgCode << 4) + bgCode;
-	}
-	this.resetColor = function() {
-		drawingColor = 0;
-	}
-
 	// Writing to buffer
 	let cursorIndex = 0;
 	function coordinateIndex(x, y) { return (y * width) + x; }
 	function print(buffer, string, index) {
 		for (let i = 0; i < string.length; i++) {
 			buffer.current[index + i] = string.charCodeAt(i);
-			buffer.colors[index + i] = drawingColor;
+			buffer.colors[index + i] = manager.color;
 		}
 		cursorIndex = index + string.length;
 	}
@@ -76,14 +86,16 @@ const DisplayBuffer = function(x, y, width, height) {
 			if (code != prevCode || colorCode != prevColorCode) {
 				const fgCode = colorCode >> 4;
 				const bgCode = colorCode & 0x0F;
-				if (fgCode != currentColor.fg) {
+				if (fgCode != currentColor.fg || colorCode != manager.lastRenderedColor) {
 					process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
 					currentColor.fg = fgCode;
+					manager.lastRenderedColor = colorCode;
 					colorChangeCount++;
 				}
-				if (bgCode != currentColor.bg) {
+				if (bgCode != currentColor.bg || colorCode != manager.lastRenderedColor) {
 					process.stdout.write('\x1b[' + (39 * (bgCode != 0) + bgCode).toString() + 'm');
 					currentColor.bg = bgCode;
+					manager.lastRenderedColor = colorCode;
 					colorChangeCount++;
 				}
 				const x = i % this.width;
@@ -96,10 +108,11 @@ const DisplayBuffer = function(x, y, width, height) {
 			this.colors[i] = 0;
 			this.prevColors[i] = colorCode;
 		}
-		drawToScreen('                ', this.x, this.y - 2);
-		drawToScreen('painted ' + drawCount.toString() + ' chars', this.x, this.y - 2);
-		drawToScreen('                          ', this.x, this.y + this.height + 1);
-		drawToScreen('changed color ' + colorChangeCount.toString() + ' times', this.x, this.y + this.height + 1);
+		// drawToScreen('                ', this.x, this.y - 2);
+		// drawToScreen('painted ' + drawCount.toString() + ' chars', this.x, this.y - 2);
+		// drawToScreen('                          ', this.x, this.y + this.height + 1);
+		// drawToScreen('changed color ' + colorChangeCount.toString() + ' times', this.x, this.y + this.height + 1);
+		if (drawCount > 0) this.empty = false;
 		drawCount = 0;
 		colorChangeCount = 0;
 	}
@@ -107,6 +120,7 @@ const DisplayBuffer = function(x, y, width, height) {
 		this.current = bufferWithSpaces(this.size);
 		this.colors = new Uint8Array(this.size);
 		this.render();
+		this.empty = true;
 	}
 	// Only meant to be used for when the screen dimensions change
 	this.move = function(x, y) {
@@ -126,7 +140,7 @@ const DisplayBuffer = function(x, y, width, height) {
 	let outlined = false;
 	let outlineColor = 'reset';
 	this.outline = function(color = 'reset', draw = true) {
-		const fgCode = colors[color];
+		const fgCode = manager.colors[color];
 		process.stdout.write('\x1b[0m');
 		process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
 		const sq = draw ?
@@ -144,4 +158,5 @@ const DisplayBuffer = function(x, y, width, height) {
 	}
 }
 
-module.exports = DisplayBuffer;
+module.exports.BufferManager = BufferManager;
+module.exports.DisplayBuffer = DisplayBuffer;

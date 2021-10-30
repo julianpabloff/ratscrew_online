@@ -166,10 +166,9 @@ function updateMenu() {
 		switchTo('online');
 		return;
 	}
-	const prevMenuOption = controller.menuOption;
 	controller.handleMenu();
-	if (prevMenuOption != controller.menuOption)
-		display.menu.drawMenuDynamic(controller.menuOption, controller.prevMenuOption);
+	if (controller.prevMenuOption != controller.menuOption)
+		display.newMenu.drawMenu(controller.menuOption);
 }
 
 let prevAllFieldsFilled = false;
@@ -268,6 +267,7 @@ function clearScreen(name) {
 function startScreen(name, prevName = 'none') {
 	if (name == 'menu') {
 		display.newMenu.drawLogo();
+		display.newMenu.drawMenu(controller.menuOption);
 		// display.menu.setSize();
 		// display.menu.drawLogo();
 		// display.menu.drawMenuStatic(controller.menuOption);

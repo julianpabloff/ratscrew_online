@@ -33,6 +33,11 @@ const Controller = function() {
 	}
 	this.update();
 
+	this.handleScreen = function(screen) {
+		switch(screen) {
+			case 'menu' : this.handleMenu(); break;
+		}
+	}
 	this.menuOption = 0;
 	this.prevMenuOption = 0;
 	this.currentMenu = 'main';

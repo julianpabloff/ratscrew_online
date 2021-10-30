@@ -1,8 +1,8 @@
-const Display = require('./display.js');
-const DisplayBuffer = require('./buffer.js');
-const d = new Display();
+// const Display = require('./new_display.js');
+// const DisplayBuffer = require('./buffer.js');
+// const d = new Display();
 
-const NewMenuDispaly = function() {
+const NewMenuDispaly = function(d) {
 	const logoStrings = [
 		'   ____________ ___________ ____    ____ ___________ ___________ ___________ ___________ ____________',
 		' /\\     ______\\\\    ______\\\\   \\  /\\   \\\\    ___   \\\\____   ___\\\\____   ___\\\\    ___   \\\\    ____   \\',
@@ -32,8 +32,9 @@ const NewMenuDispaly = function() {
 	let logoX, logoY, optionsY, lobbyX;
 	this.setSize();
 
-	const logo = new DisplayBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight);
-	logo.outline('green');
+	// const bufferData = { color: 0 };
+	// const logo = new DisplayBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
+	const logo = d.addBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
 
 	this.drawLogo = function() {
 		const offset = Math.floor(logoHeight / 2) - 2;
@@ -45,9 +46,9 @@ const NewMenuDispaly = function() {
 				const char = logoStrings[i][j];
 				if (char != currentChar && char != ' ') {
 					currentChar = char;
-					if (currentChar == '\\') logo.setFg('magenta');
-					else if (currentChar == '_') logo.setFg('cyan');
-					else if (currentChar == '/') logo.setFg('red');
+					if (currentChar == '\\') d.buffer.setFg('magenta');
+					else if (currentChar == '_') d.buffer.setFg('cyan');
+					else if (currentChar == '/') d.buffer.setFg('red');
 				}
 				if (char != ' ') logo.draw(char, x + j, y);
 			}
@@ -55,8 +56,30 @@ const NewMenuDispaly = function() {
 		logo.render();
 	}
 
-	const menu = new DisplayBuffer(logoX - 2, optionsY, 35, 10);
-	menu.outline('magenta');
+	const menu = d.addBuffer(logoX - 2, optionsY, 35, 10, 'menu');
+
+	const selections = ['LOCAL', 'ONLINE', 'SETTINGS'];
+	this.drawMenu = function(option) {
+		for (let i = 0; i < selections.length; i++) {
+			const value = selections[i];
+			const y = 2 * i;
+			if (i == option) {
+				d.buffer.setFg('red');
+				menu.draw('>', 0, y);
+			} else d.buffer.setFg('reset');
+			menu.draw(value, 2, y);
+		}
+		menu.render();
+	}
+	this.start = function(data) {
+		logo.outline('green');
+		menu.outline('magenta');
+		this.drawLogo();
+		this.drawMenu(data.option);
+	}
+	this.update = function(data) {
+		this.drawMenu(data.option);
+	}
 }
 
 module.exports = NewMenuDispaly;
