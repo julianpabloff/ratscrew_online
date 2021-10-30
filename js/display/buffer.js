@@ -5,52 +5,62 @@ const DisplayBuffer = function(x, y, width, height) {
 	this.height = height;
 	this.size = width * height;
 
-	function initBuffer(size) {
+	function bufferWithSpaces(size) {
 		let buffer = new Uint8Array(size);
 		for (let i = 0; i < size; i++) {
 			buffer[i] = 32;
 		}
 		return buffer;
 	}
-	this.current = initBuffer(this.size);
-	this.previous = initBuffer(this.size);
+	this.current = bufferWithSpaces(this.size);
+	this.previous = bufferWithSpaces(this.size);
 	this.colors = new Uint8Array(this.size);
-	// this.initBuffer(this.current);
-	// this.initBuffer(this.previous);
+	this.prevColors = new Uint8Array(this.size);
 
 
-	const colors = {
-		fg : { black:'\x1b[30m', red:'\x1b[31m', green:'\x1b[32m', magenta:'\x1b[35m', blue:'\x1b[34m', cyan:'\x1b[36m', white:'\x1b[37m', reset:'\x1b[0m' },
-		bg : { black:'\x1b[40m', red:'\x1b[41m', green:'\x1b[42m', magenta:'\x1b[45m', blue:'\x1b[44m', cyan:'\x1b[46m', white:'\x1b[47m', reset:'\x1b[0m' }
-	};
-	const colorCodes = { reset: 0, black: 1, red: 2, green: 3, yellow: 4, blue: 5, magenta: 6, cyan: 7, white: 8 };
-	function toColorCode(fg, bg) {
-		// 8 bits, first 4 for foreground, the last 4 for background
-		return (colorCodes[fg] << 4) + colorCodes[bg];
-	}
-	function toColorString(code) {
-		
-	}
-
+	// Managing color codes
+	const colors = { reset: 0, black: 1, red: 2, green: 3, yellow: 4, blue: 5, magenta: 6, cyan: 7, white: 8 };
 	let drawingColor = 0;
 	this.setFg = function(foreground) {
-		const fgCode = colorCodes[foreground];
+		const fgCode = colors[foreground];
 		drawingColor = (fgCode << 4) + (drawingColor & 0x0F);
 	}
 	this.setBg = function(background) {
-		const bgCode = colorCodes[background];
+		const bgCode = colors[background];
 		drawingColor = ((drawingColor >> 4) << 4) + bgCode;
 	}
-	function coordinateIndex(x, y) { return (y * width) + x; }
-	this.draw = function(string, x, y, foreground = 'reset', background = 'reset') {
-		const index = coordinateIndex(x, y);
-		for (let i = 0; i < string.length; i++) {
-			this.current[index + i] = string.charCodeAt(i);
-			this.colors[index + i] = drawingColor;
-		}
+	this.setColor = function(foreground, background) {
+		const fgCode = colors[foreground];
+		const bgCode = colors[background];
+		drawingColor = (fgCode << 4) + bgCode;
+	}
+	this.resetColor = function() {
+		drawingColor = 0;
 	}
 
-	function drawToScreen(string, x, y, foreground = colors.fg.reset, background = colors.bg.reset) {
+	// Writing to buffer
+	let cursorIndex = 0;
+	function coordinateIndex(x, y) { return (y * width) + x; }
+	function print(buffer, string, index) {
+		for (let i = 0; i < string.length; i++) {
+			buffer.current[index + i] = string.charCodeAt(i);
+			buffer.colors[index + i] = drawingColor;
+		}
+		cursorIndex = index + string.length;
+	}
+	this.cursorTo = function(x, y) {
+		cursorIndex = coordinateIndex(x, y);
+	}
+	this.write = function(string) {
+		print(this, string, cursorIndex);
+	}
+	this.draw = function(string, x, y) {
+		const index = coordinateIndex(x, y);
+		print(this, string, index);
+	}
+
+	// Rendering buffer
+	function drawToScreen(string, x, y) {
 		process.stdout.cursorTo(x, y);
 		process.stdout.write(string);
 	}
@@ -62,9 +72,10 @@ const DisplayBuffer = function(x, y, width, height) {
 			const code = this.current[i];
 			const prevCode = this.previous[i];
 			const colorCode = this.colors[i];
-			const fgCode = colorCode >> 4;
-			const bgCode = colorCode & 0x0F;
-			if (code != prevCode) {
+			const prevColorCode = this.prevColors[i];
+			if (code != prevCode || colorCode != prevColorCode) {
+				const fgCode = colorCode >> 4;
+				const bgCode = colorCode & 0x0F;
 				if (fgCode != currentColor.fg) {
 					process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
 					currentColor.fg = fgCode;
@@ -83,99 +94,54 @@ const DisplayBuffer = function(x, y, width, height) {
 			this.current[i] = 32;
 			this.previous[i] = code;
 			this.colors[i] = 0;
+			this.prevColors[i] = colorCode;
 		}
-		drawToScreen('                          ', 10, 5);
-		drawToScreen('painted ' + drawCount.toString() + ' chars', 10, 5);
+		drawToScreen('                ', this.x, this.y - 2);
+		drawToScreen('painted ' + drawCount.toString() + ' chars', this.x, this.y - 2);
+		drawToScreen('                          ', this.x, this.y + this.height + 1);
+		drawToScreen('changed color ' + colorChangeCount.toString() + ' times', this.x, this.y + this.height + 1);
 		drawCount = 0;
-		process.stdout.cursorTo(5, 10 + 3 * colorChangeCount + 1);
-		// console.log(colorChangeCount);
 		colorChangeCount = 0;
 	}
 	this.clear = function() {
-		this.current = initBuffer(this.size);
+		this.current = bufferWithSpaces(this.size);
+		this.colors = new Uint8Array(this.size);
 		this.render();
 	}
-}
-
-const stdout = process.stdout;
-const rows = stdout.rows;
-const columns = stdout.columns;
-
-function draw(string, x, y) {
-	stdout.cursorTo(x, y);
-	stdout.write(string);
-}
-
-function drawBox(x, y, width, height) {
-	draw('┌' + '─'.repeat(width - 2) + '┐', x, y);
-	for (let i = 0; i < height - 2; i++) {
-		draw('│', x, y + 1 + i);
-		draw('│', x + width - 1, y + 1 + i);
+	// Only meant to be used for when the screen dimensions change
+	this.move = function(x, y) {
+		const wasOutlined = outlined;
+		const tempBuffer = new Uint8Array(this.previous);
+		const tempColorBuffer = new Uint8Array(this.prevColors);
+		this.clear();
+		if (wasOutlined) this.outline('reset', false);
+		this.current = tempBuffer;
+		this.colors = tempColorBuffer;
+		this.x = x; this.y = y;
+		this.render();
+		if (wasOutlined) this.outline(outlineColor);
 	}
-	draw('└' + '─'.repeat(width - 2) + '┘', x, y + height - 1);
-}
 
-async function wait(miliseconds) {
-	return new Promise(function(resolve) {
-		setTimeout(() => {
-			resolve();
-		}, miliseconds);
-	});
-}
-
-async function test() {
-	stdout.write('\x1b[2J'); // clear screen
-	stdout.write('\x1b[?25l'); // hide cursor
-
-	const logo = [
-		'   ____________ ___________ ____    ____ ___________ ___________ ___________ ___________ ____________',
-		' /\\     ______\\\\    ______\\\\   \\  /\\   \\\\    ___   \\\\____   ___\\\\____   ___\\\\    ___   \\\\    ____   \\',
-		'\\ \\    \\_____/_\\   \\   __/_\\   \\_\\_\\   \\\\   \\_/\\   \\___/\\  \\__//___/\\  \\__/ \\   \\__\\   \\\\   \\__/\\   \\',
-		'\\ \\     ______\\\\   \\ /\\   \\\\____    ___\\\\    ______\\  \\ \\  \\      \\ \\  \\  \\ \\    ___   \\\\   \\ \\ \\   \\',
-		'\\ \\    \\_____/_\\   \\__\\   \\___/\\   \\_/\\ \\   \\_____/   \\ \\  \\     _\\_\\  \\__\\_\\   \\  \\   \\\\   \\ \\ \\   \\',
-		'\\ \\___________\\\\__________\\  \\ \\___\\  \\ \\___\\         \\ \\__\\   /\\__________\\\\___\\  \\___\\\\___\\ \\ \\___\\',
-		'\\/___________/___________/   \\/___/   \\/___/          \\/__/   \\/__________//___/ \\/___//___/  \\/___/ ',
-		'   ____________ ___________ ___________ ___________ ___________ ___________ ___________ ___       ___',
-		' /\\     ______\\\\_______   \\\\____   ___\\\\    ______\\\\    ______\\\\     _____\\\\    ___   \\\\  \\  ___/\\  \\',
-		'\\ \\    \\_____//_______\\   \\___/\\  \\__/ \\   \\_____/_\\   \\_____/ \\    \\____/ \\   \\_/\\   \\\\  \\/\\  \\ \\  \\',
-		'\\ \\    \\      /\\    ___   \\  \\ \\  \\  \\ \\_______   \\\\   \\     \\ \\    \\    \\ \\    ______\\\\  \\ \\  \\ \\  \\',
-		'\\ \\    \\     \\ \\   \\_/\\   \\  \\ \\  \\  \\/_______\\   \\\\   \\_____\\_\\    \\    \\ \\   \\_____/_\\  \\_\\  \\_\\  \\',
-		'\\ \\____\\     \\ \\__________\\  \\ \\__\\   /\\__________\\\\__________\\\\____\\    \\ \\__________\\\\____________\\',
-		'\\/____/      \\/__________/   \\/__/   \\/__________//__________//____/     \\/__________//____________/ ',
-	];
-	const logoWidth = logo[0].length;
-	const logoHeight = logo.length;
-
-	function drawLogo() {
-		const offset = Math.floor(logoHeight / 2) - 2;
-		for (let i = 0; i < logoHeight; i++) {
-			const x = logoX - offset + i - (i > 6) * 4;
-			const y = logoY + i;
-			let currentChar = ' ';
-			for (let j = 0; j < logoWidth; j++) {
-				const char = logo[i][j];
-				if (char != currentChar && char != ' ') currentChar = char;
-				else continue;
-			}
+	// For seeing where it is
+	let outlined = false;
+	let outlineColor = 'reset';
+	this.outline = function(color = 'reset', draw = true) {
+		const fgCode = colors[color];
+		process.stdout.write('\x1b[0m');
+		process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
+		const sq = draw ?
+			{tl: '┌', h: '─', tr: '┐', v: '│', bl: '└', br: '┘'}:
+			{tl: ' ', h: ' ', tr: ' ', v: ' ', bl: ' ', br: ' '};
+		drawToScreen(sq.tl + sq.h.repeat(this.width) + sq.tr, this.x - 1, this.y - 1);
+		for (let i = 0; i < this.height; i++) {
+			drawToScreen(sq.v, this.x - 1, this.y + i);
+			drawToScreen(sq.v, this.x + this.width, this.y + i);
 		}
+		drawToScreen(sq.bl + sq.h.repeat(this.width) + sq.br, this.x - 1, this.y + this.height);
+		outlined = draw;
+		if (draw) outlineColor = color;
+		currentColor = { fg: fgCode, bg: 0 };
 	}
-
-	const bufferWidth = logoWidth;
-	const bufferHeight = logoHeight + 2;
-	const bufferSize = bufferWidth * bufferHeight;
-	const bufferX = Math.floor(columns / 2 - bufferWidth / 2);
-	const bufferY = Math.floor(rows / 2 - bufferHeight / 2);
-
-	const buffer = new DisplayBuffer(bufferX, bufferY, bufferWidth, bufferHeight);
-	stdout.write('\x1b[0m');
-	drawBox(bufferX - 1, bufferY - 1, bufferWidth + 2, bufferHeight + 2);
-
-	buffer.setFg('yellow');
-	buffer.setBg('blue');
-	buffer.draw('julian', 10, 10);
-	buffer.render();
-
-	stdout.cursorTo(0, rows - 2);
-	stdout.write('\x1b[?25h\x1b[0m'); // show cursor
 }
-test();
+
+module.exports = DisplayBuffer;

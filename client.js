@@ -109,7 +109,6 @@ socket.on('serverPing', () => {
 	connected = true;
 	lobby.get(hash).connected = true;
 	process.stdout.cursorTo(1, 20);
-	console.log('connected');
 	sendEvent('serverPing');
 });
 socket.on('playerPings', connectionData => {
@@ -153,8 +152,11 @@ async function getPing() {
 }
 
 const display = new (require('./js/display/display.js'));
+display.init();
 	const MenuDisplay = require('./js/display/menu_display.js');
 	display.menu = new MenuDisplay(display);
+	const NewMenuDispaly = require('./js/display/new_menu_display.js');
+	display.newMenu = new NewMenuDispaly();
 const Controller = require('./js/controller.js');
 const controller = new Controller.Controller;
 const game = new(require('./js/game.js'));
@@ -265,10 +267,10 @@ function clearScreen(name) {
 
 function startScreen(name, prevName = 'none') {
 	if (name == 'menu') {
-		display.menu.setSize();
-		display.menu.drawLogo();
-		display.menu.drawMenuStatic(controller.menuOption);
-		// display.menu.drawDynamic(controller.menuOption);
+		display.newMenu.drawLogo();
+		// display.menu.setSize();
+		// display.menu.drawLogo();
+		// display.menu.drawMenuStatic(controller.menuOption);
 	} else if (name == 'online') {
 		if (prevName == 'menu') {
 			prevAllFieldsFilled = true;
@@ -297,7 +299,6 @@ function switchTo(name) {
 	update = screenUpdates[name];
 }
 
-display.init();
 startScreen('menu');
 
 let keypress = require('keypress');
