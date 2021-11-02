@@ -37,7 +37,7 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	this.empty = true;
 
 	function bufferWithSpaces(size) {
-		let buffer = new Uint8Array(size);
+		let buffer = new Uint16Array(size);
 		for (let i = 0; i < size; i++) {
 			buffer[i] = 32;
 		}
@@ -45,6 +45,7 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	}
 	this.current = bufferWithSpaces(this.size);
 	this.previous = bufferWithSpaces(this.size);
+	this.changes = bufferWithSpaces(this.size);
 	this.colors = new Uint8Array(this.size);
 	this.prevColors = new Uint8Array(this.size);
 
@@ -77,9 +78,11 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	let drawCount = 0;
 	let colorChangeCount = 0;
 	let currentColor = { fg: 0, bg: 0 };
-	this.render = function() {
+	this.render = function(clearLastFrame = true) {
+		const comparisonBuffer = clearLastFrame ? this.current : this.changes;
 		for (let i = 0; i < this.size; i++) {
-			const code = this.current[i];
+			const code = comparisonBuffer[i];
+			if (code == 0) continue;
 			const prevCode = this.previous[i];
 			const colorCode = this.colors[i];
 			const prevColorCode = this.prevColors[i];
@@ -105,6 +108,7 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 			}
 			this.current[i] = 32;
 			this.previous[i] = code;
+			this.changes[i] = code;
 			this.colors[i] = 0;
 			this.prevColors[i] = colorCode;
 		}
@@ -116,17 +120,30 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 		drawCount = 0;
 		colorChangeCount = 0;
 	}
+	this.paint = () => this.render(false); // For adding to the canvas without it clearing
+
+	// Reading buffer
+	this.read = function(x, y, length = 1) {
+		let charArray = [];
+		for (let i = 0; i < length; i++) {
+			const code = this.previous[coordinateIndex(x, y) + i];
+			charArray.push(String.fromCharCode(code));
+		}
+		return charArray.join('');
+	}
+
 	this.clear = function() {
 		this.current = bufferWithSpaces(this.size);
-		this.colors = new Uint8Array(this.size);
+		this.colors = new Uint16Array(this.size);
 		this.render();
 		this.empty = true;
+		if (outlined) this.outline('reset', false);
 	}
 	// Only meant to be used for when the screen dimensions change
 	this.move = function(x, y) {
 		const wasOutlined = outlined;
-		const tempBuffer = new Uint8Array(this.previous);
-		const tempColorBuffer = new Uint8Array(this.prevColors);
+		const tempBuffer = new Uint16Array(this.previous);
+		const tempColorBuffer = new Uint16Array(this.prevColors);
 		this.clear();
 		if (wasOutlined) this.outline('reset', false);
 		this.current = tempBuffer;
@@ -155,6 +172,9 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 		outlined = draw;
 		if (draw) outlineColor = color;
 		currentColor = { fg: fgCode, bg: 0 };
+	}
+	this.outline.clear = () => {
+		if (outlined) this.outline('reset', false);
 	}
 }
 
