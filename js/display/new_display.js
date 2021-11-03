@@ -39,24 +39,77 @@ const NewDisplay = function() {
 	};
 	this.setFg = function(colorName) { 
 		stdout.write(colors.fg[colorName]);
+		this.buffer.setFg(colorName);
 	}
 	this.setBg = function(colorName) { 
 		stdout.write(colors.bg[colorName]);
+		this.buffer.setBg(colorName);
 	}
 	this.setColor = function(fg, bg) {
 		this.setFg(fg); this.setBg(bg);
+		this.buffer.setColor(fg, bg);
 	}
 
+	// Screens
 	this.menu = new NewMenuDisplay(this);
-	this.start = function(screen, data) {
-		this[screen].start(data);
+	this.update = function(screen, type, data) {
+		this[screen][type](data);
 	}
-	this.update = function(screen, data) {
-		this[screen].update(data);
-	}
+
 	this.exit = function() {
-		stdout.write('\x1b[?25h\x1b[0m\x1b[2J');
+		// stdout.write('\x1b[?25h\x1b[0m\x1b[2J');
+		stdout.write('\x1b[?25h\x1b[0m');
 		stdout.cursorTo(0,0);
+	}
+
+	// Animations
+	this.animating = false;
+	this.dissolve = function(width, x, y, duration, content = false, color = false) {
+		const positions = new Uint8Array(width);
+		const sequence = new Uint8Array(width);
+		let sequenceIndex = 0;
+		for (let i = width; i >= 1; i--) {
+			const random = Math.floor(Math.random() * i) + 1;
+			let count = 0;
+			for (let j = 0; j < width; j++) {
+				if (positions[j] == 0) count++;
+				if (count == random) {
+					positions[j] = 1;
+					sequence[sequenceIndex] = j;
+					sequenceIndex++;
+					break;
+				}
+			}
+		}
+		let increment = 0;
+		const display = this;
+		function dissolveHelper() {
+			if (increment == width) {
+				clearInterval(dissolveInterval);
+			} else {
+				const char = content ? content[sequence[increment]] : ' ';
+				if (color) display.setFg(color);
+				display.draw(char, x + sequence[increment], y);
+				increment++;
+			}
+		}
+		const dissolveInterval = setInterval(dissolveHelper, duration / width);
+	}
+	this.animateSelection = function(text, x, y, duration) {
+		const distance = text.length + 3;
+		let position = 0;
+		const display = this;
+		function drawAnimation() {
+			display.setFg('red');
+			if (position == distance) {
+				display.draw(' ', x - 2 + position, y);
+				clearInterval(moveRight);
+			} else {
+				display.draw(' > ', x - 2 + position, y);
+				position++;
+			}
+		}
+		moveRight = setInterval(drawAnimation, duration / distance);
 	}
 }
 

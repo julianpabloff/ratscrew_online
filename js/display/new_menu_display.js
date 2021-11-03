@@ -1,7 +1,3 @@
-// const Display = require('./new_display.js');
-// const DisplayBuffer = require('./buffer.js');
-// const d = new Display();
-
 const NewMenuDispaly = function(d) {
 	const logoStrings = [
 		'   ____________ ___________ ____    ____ ___________ ___________ ___________ ___________ ____________',
@@ -32,8 +28,7 @@ const NewMenuDispaly = function(d) {
 	let logoX, logoY, optionsY, lobbyX;
 	this.setSize();
 
-	// const bufferData = { color: 0 };
-	// const logo = new DisplayBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
+	// LOGO
 	const logo = d.addBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
 
 	this.drawLogo = function() {
@@ -56,12 +51,13 @@ const NewMenuDispaly = function(d) {
 		logo.render();
 	}
 
-	const menu = d.addBuffer(logoX - 2, optionsY, 35, 10, 'menu');
+	// MENU
+	const menu = d.addBuffer(logoX - 2, optionsY, 35, 15, 'menu');
 
-	const selections = ['LOCAL', 'ONLINE', 'SETTINGS'];
+	const menuOptions = ['LOCAL', 'ONLINE', 'SETTINGS'];
 	this.drawMenu = function(option) {
-		for (let i = 0; i < selections.length; i++) {
-			const value = selections[i];
+		for (let i = 0; i < menuOptions.length; i++) {
+			const value = menuOptions[i];
 			const y = 2 * i;
 			if (i == option) {
 				d.buffer.setFg('red');
@@ -69,16 +65,67 @@ const NewMenuDispaly = function(d) {
 			} else d.buffer.setFg('reset');
 			menu.draw(value, 2, y);
 		}
+		menu.save();
+		drawCursor();
 		menu.render();
 	}
-	this.start = function(data) {
+	const duration = 200;
+	this.drawMenuSelection = async function(option) {
+		d.animating = true;
+		return new Promise(function(resolve) {
+			for (let i = 0; i < menuOptions.length; i++) {
+				const selection = menuOptions[i];
+				const x = menu.x + 2;
+				const y = menu.y + 2 * i;
+				if (i == option) d.animateSelection(selection, x, y, duration);
+				else d.dissolve(selection.length, x, y, duration);
+			}
+			setTimeout(() => {
+				d.animating = false;
+				resolve();
+			}, duration + 100);
+		});
+	}
+
+	// ONLINE
+	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
+	const cursor = { x: 5, y: 0, visible: false, active: true };
+	function drawCursor() {
+		const underCursor = menu.read(cursor.x, cursor.y);
+		if (cursor.visible) {
+			d.buffer.setFg('red');
+			menu.draw('█', cursor.x, cursor.y);
+		} else {
+			d.buffer.setFg(underCursor.fg);
+			menu.draw(underCursor.char, cursor.x, cursor.y);
+		}
+	}
+	let cursorBlink = setInterval(() => {
+		cursor.visible = !cursor.visible;
+		if (!cursor.active) return;
+		d.buffer.setFg('red');
+		drawCursor();
+		menu.paint();
+	}, 600);
+
+	// BUFFERS
+	this.start = function(option) {
 		logo.outline('green');
 		menu.outline('magenta');
 		this.drawLogo();
-		this.drawMenu(data.option);
+		this.drawMenu(option);
 	}
-	this.update = function(data) {
-		this.drawMenu(data.option);
+	this.update = function(option) {
+		this.drawMenu(option);
+	}
+	this.clear = () => { menu.clear(); }
+	this.exit = function() {
+		menu.clear();
+		logo.clear();
+	}
+
+	this.dissolve = function() {
+		d.dissolve(7, menu.x, menu.y, 1000);
 	}
 }
 

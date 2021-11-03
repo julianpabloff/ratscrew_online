@@ -38,14 +38,10 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 
 	function bufferWithSpaces(size) {
 		let buffer = new Uint16Array(size);
-		for (let i = 0; i < size; i++) {
-			buffer[i] = 32;
-		}
-		return buffer;
+		return buffer.fill(32);
 	}
 	this.current = bufferWithSpaces(this.size);
 	this.previous = bufferWithSpaces(this.size);
-	this.changes = bufferWithSpaces(this.size);
 	this.colors = new Uint8Array(this.size);
 	this.prevColors = new Uint8Array(this.size);
 
@@ -79,10 +75,9 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	let colorChangeCount = 0;
 	let currentColor = { fg: 0, bg: 0 };
 	this.render = function(clearLastFrame = true) {
-		const comparisonBuffer = clearLastFrame ? this.current : this.changes;
 		for (let i = 0; i < this.size; i++) {
-			const code = comparisonBuffer[i];
-			if (code == 0) continue;
+			let code = this.current[i];
+			if (code == 0 && clearLastFrame) code = 32;
 			const prevCode = this.previous[i];
 			const colorCode = this.colors[i];
 			const prevColorCode = this.prevColors[i];
@@ -106,9 +101,8 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 				drawToScreen(String.fromCharCode(code), this.x + x, this.y + y);
 				drawCount++;
 			}
-			this.current[i] = 32;
+			this.current[i] = 0;
 			this.previous[i] = code;
-			this.changes[i] = code;
 			this.colors[i] = 0;
 			this.prevColors[i] = colorCode;
 		}
@@ -122,14 +116,24 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	}
 	this.paint = () => this.render(false); // For adding to the canvas without it clearing
 
-	// Reading buffer
-	this.read = function(x, y, length = 1) {
-		let charArray = [];
-		for (let i = 0; i < length; i++) {
-			const code = this.previous[coordinateIndex(x, y) + i];
-			charArray.push(String.fromCharCode(code));
+	// Saving buffer and reading from the save
+	let savedBuffer, savedColors;
+	this.save = function() {
+		savedBuffer = new Uint16Array(this.current);
+		for (let i = 0; i < this.size; i++) {
+			if (savedBuffer[i] == 0) savedBuffer[i] = 32;
 		}
-		return charArray.join('');
+		savedColors = new Uint16Array(this.colors);
+	}
+	const colorLookup = ['reset', 'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
+	this.read = function(x, y) {
+		const index = coordinateIndex(x, y);
+		const colorCode = savedColors[index];
+		return {
+			char: String.fromCharCode(savedBuffer[index]),
+			fg: colorLookup[colorCode >> 4],
+			bg: colorLookup[colorCode & 0x0F]
+		};
 	}
 
 	this.clear = function() {

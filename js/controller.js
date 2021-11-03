@@ -33,24 +33,25 @@ const Controller = function() {
 	}
 	this.update();
 
-	this.handleScreen = function(screen) {
-		switch(screen) {
-			case 'menu' : this.handleMenu(); break;
-		}
-	}
 	this.menuOption = 0;
 	this.prevMenuOption = 0;
-	this.currentMenu = 'main';
-	this.menus = ['local', 'online', 'settings'];
+	// this.currentMenu = 'main';
+	// this.menus = ['local', 'online', 'settings'];
 	this.handleMenu = function() {
 		this.prevMenuOption = this.menuOption;
 		if (this.up) {
 			if (this.menuOption == 0) this.menuOption = 2;
 			else this.menuOption--;
-		} else if (this.down) {
+			return 'select';
+		}
+		if (this.down) {
 			if (this.menuOption == 2) this.menuOption = 0;
 			else this.menuOption++;
+			return 'select';
 		}
+		if (this.enter) return 'enter';
+		if (this.esc) return 'quit';
+		return null;
 	}
 
 	this.onlineStage = 0;
@@ -59,41 +60,42 @@ const Controller = function() {
 	this.allFieldsFilled = false;
 	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
 	this.handleOnline = function() {
-		if (this.onlineStage == 0) {
-			this.textChange = null;
-			if (this.onlineOption < this.onlineBuffer.length) {
-				const charArray = this.onlineBuffer[this.onlineOption];
-				if (this.alphaNum) {
-					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
-					charArray.push(this.alphaNum);
-				} else if (this.space) {
-					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: ' '};
-					charArray.push(' ');
-				}else if (this.backspace && charArray.length > 0) {
-					this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
-					charArray.pop();
-				}
-				this.allFieldsFilled = true;
-				for (let textArray of this.onlineBuffer) {
-					if (textArray.length == 0) {
-						this.allFieldsFilled = false;
-						break;
-					}
-				}
-				const input = this.onlineBuffer[0].join('');
-				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
-				if (input != match) this.allFieldsFilled = false;
-				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
-				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
-			}
-			if (this.up)
-				if (this.onlineOption == 0) this.onlineOption = lastOnlineOptionsIndex;
-				else this.onlineOption--;
-			else if (this.down || this.tab)
-				if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
-				else this.onlineOption++;
-		} else if (this.onlineStage == 1) {
+		this.textChange = null;
+		if (this.up) {
+			if (this.onlineOption == 0) this.onlineOption = lastOnlineOptionsIndex;
+			else this.onlineOption--;
+		} else if (this.down || this.tab) {
+			if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
+			else this.onlineOption++;
 		}
+		if (this.onlineOption < this.onlineBuffer.length) {
+			const charArray = this.onlineBuffer[this.onlineOption];
+			if (this.alphaNum) {
+				this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
+				charArray.push(this.alphaNum);
+			} else if (this.space) {
+				this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: ' '};
+				charArray.push(' ');
+			} else if (this.backspace && charArray.length > 0) {
+				this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
+				charArray.pop();
+			}
+			this.allFieldsFilled = true;
+			for (let textArray of this.onlineBuffer) {
+				if (textArray.length == 0) {
+					this.allFieldsFilled = false;
+					break;
+				}
+			}
+			const input = this.onlineBuffer[0].join('');
+			const match = [...input.matchAll(/[^:]+:\d+/g)][0];
+			if (input != match) this.allFieldsFilled = false;
+			if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
+			else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
+		}
+	}
+	this.handleScreen = function(screen) {
+		if (screen == 'menu') return this.handleMenu();
 	}
 
 	this.addPlayerControls = function(players) {

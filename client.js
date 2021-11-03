@@ -155,8 +155,6 @@ const display = new (require('./js/display/display.js'));
 display.init();
 	const MenuDisplay = require('./js/display/menu_display.js');
 	display.menu = new MenuDisplay(display);
-	const NewMenuDispaly = require('./js/display/new_menu_display.js');
-	display.newMenu = new NewMenuDispaly();
 const Controller = require('./js/controller.js');
 const controller = new Controller.Controller;
 const game = new(require('./js/game.js'));
@@ -168,7 +166,7 @@ function updateMenu() {
 	}
 	controller.handleMenu();
 	if (controller.prevMenuOption != controller.menuOption)
-		display.newMenu.drawMenu(controller.menuOption);
+		display.menu.drawMenuDynamic(controller.menuOption, controller.prevMenuOption);
 }
 
 let prevAllFieldsFilled = false;
@@ -266,8 +264,8 @@ function clearScreen(name) {
 
 function startScreen(name, prevName = 'none') {
 	if (name == 'menu') {
-		display.newMenu.drawLogo();
-		display.newMenu.drawMenu(controller.menuOption);
+		display.menu.drawLogo();
+		display.menu.drawMenuStatic(controller.menuOption);
 		// display.menu.setSize();
 		// display.menu.drawLogo();
 		// display.menu.drawMenuStatic(controller.menuOption);
