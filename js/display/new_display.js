@@ -55,8 +55,15 @@ const NewDisplay = function() {
 	this.update = function(screen, type, data) {
 		this[screen][type](data);
 	}
+	this.resize = function(screen) {
+		this.setSize();
+		const component = this[screen];
+		component.setSize();
+		component.moveBuffers();
+	}
 
-	this.exit = function() {
+	this.exit = function(screen = 'menu') {
+		this[screen].exit();
 		// stdout.write('\x1b[?25h\x1b[0m\x1b[2J');
 		stdout.write('\x1b[?25h\x1b[0m');
 		stdout.cursorTo(0,0);
@@ -64,7 +71,7 @@ const NewDisplay = function() {
 
 	// Animations
 	this.animating = false;
-	this.dissolve = function(width, x, y, duration, content = false, color = false) {
+	this.dissolve = function(buffer, width, x, y, duration, content = false, color = false) {
 		const positions = new Uint8Array(width);
 		const sequence = new Uint8Array(width);
 		let sequenceIndex = 0;
@@ -89,23 +96,26 @@ const NewDisplay = function() {
 			} else {
 				const char = content ? content[sequence[increment]] : ' ';
 				if (color) display.setFg(color);
-				display.draw(char, x + sequence[increment], y);
+				buffer.draw(char, x + sequence[increment], y);
+				buffer.paint();
 				increment++;
 			}
 		}
 		const dissolveInterval = setInterval(dissolveHelper, duration / width);
 	}
-	this.animateSelection = function(text, x, y, duration) {
+	this.animateSelection = function(buffer, text, x, y, duration) {
 		const distance = text.length + 3;
 		let position = 0;
 		const display = this;
 		function drawAnimation() {
 			display.setFg('red');
 			if (position == distance) {
-				display.draw(' ', x - 2 + position, y);
+				buffer.draw(' ', x - 2 + position, y);
+				buffer.paint();
 				clearInterval(moveRight);
 			} else {
-				display.draw(' > ', x - 2 + position, y);
+				buffer.draw(' > ', x - 2 + position, y);
+				buffer.paint();
 				position++;
 			}
 		}

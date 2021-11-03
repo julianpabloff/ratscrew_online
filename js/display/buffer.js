@@ -123,7 +123,7 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 		for (let i = 0; i < this.size; i++) {
 			if (savedBuffer[i] == 0) savedBuffer[i] = 32;
 		}
-		savedColors = new Uint16Array(this.colors);
+		savedColors = new Uint8Array(this.colors);
 	}
 	const colorLookup = ['reset', 'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
 	this.read = function(x, y) {
@@ -134,6 +134,11 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 			fg: colorLookup[colorCode >> 4],
 			bg: colorLookup[colorCode & 0x0F]
 		};
+	}
+	this.load = function() {
+		this.current = new Uint16Array(savedBuffer);
+		this.colors = new Uint8Array(savedColors);
+		this.render();
 	}
 
 	this.clear = function() {
@@ -147,7 +152,7 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 	this.move = function(x, y) {
 		const wasOutlined = outlined;
 		const tempBuffer = new Uint16Array(this.previous);
-		const tempColorBuffer = new Uint16Array(this.prevColors);
+		const tempColorBuffer = new Uint8Array(this.prevColors);
 		this.clear();
 		if (wasOutlined) this.outline('reset', false);
 		this.current = tempBuffer;

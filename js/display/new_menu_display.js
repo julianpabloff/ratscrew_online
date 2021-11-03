@@ -25,7 +25,7 @@ const NewMenuDispaly = function(d) {
 		lobbyX = logoX + 40;
 		logoEndX = logoX + logoWidth;
 	}
-	let logoX, logoY, optionsY, lobbyX;
+	let logoX, logoY, optionsY, lobbyX, lobbyEndX;
 	this.setSize();
 
 	// LOGO
@@ -77,36 +77,92 @@ const NewMenuDispaly = function(d) {
 				const selection = menuOptions[i];
 				const x = menu.x + 2;
 				const y = menu.y + 2 * i;
-				if (i == option) d.animateSelection(selection, x, y, duration);
-				else d.dissolve(selection.length, x, y, duration);
+				if (i == option) d.animateSelection(menu, selection, 2, 2 * i, duration);
+				else d.dissolve(menu, selection.length, 2, 2 * i, duration);
 			}
 			setTimeout(() => {
 				d.animating = false;
 				resolve();
-			}, duration + 100);
+			}, duration + 175);
 		});
 	}
 
-	// ONLINE
-	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
-	const cursor = { x: 5, y: 0, visible: false, active: true };
+	// CURSOR
+	const cursor = { x: 0, y: 0, visible: false, active: false };
 	function drawCursor() {
-		const underCursor = menu.read(cursor.x, cursor.y);
+		if (!cursor.active) return;
 		if (cursor.visible) {
 			d.buffer.setFg('red');
 			menu.draw('█', cursor.x, cursor.y);
 		} else {
+			const underCursor = menu.read(cursor.x, cursor.y);
 			d.buffer.setFg(underCursor.fg);
 			menu.draw(underCursor.char, cursor.x, cursor.y);
 		}
 	}
-	let cursorBlink = setInterval(() => {
-		cursor.visible = !cursor.visible;
-		if (!cursor.active) return;
-		d.buffer.setFg('red');
+	let cursorBlink;
+	function startCursorBlink() {
+		cursor.active = true;
+		cursor.visible = true;
 		drawCursor();
-		menu.paint();
-	}, 600);
+		cursorBlink = setInterval(() => {
+			cursor.visible = !cursor.visible;
+			if (cursor.active) {
+				drawCursor();
+				menu.paint();
+			}
+		}, 500);
+	}
+	this.toggleCursor = function(show) {
+		cursor.active = show;
+	}
+
+	// ONLINE
+	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
+	function drawBufferContent(charArray, x, y, selected) {
+		menu.cursorTo(x, y);
+		if (selected) d.buffer.setFg('red');
+		else d.buffer.setFg('white');
+		if (charArray.length > 0)
+			charArray.forEach(char => menu.write(char));
+		else if (!selected)
+			menu.write('...');
+	}
+	this.drawOnline = function(option, textBuffer, cursorIndex, showConnect, animateConnect = false) {
+		for (let i = 0; i < onlineOptions.length - 1; i++) {
+			const value = onlineOptions[i];
+			const y = 3 * i;
+			if (i == option) {
+				d.buffer.setFg('red');
+				menu.draw('>', 0, y);
+			} else d.buffer.setFg('white');
+			menu.draw(value, 2, y);
+			drawBufferContent(textBuffer[i], 2, y + 1, (i == option));
+		}
+		menu.save();
+		const lastIndex = onlineOptions.length - 1;
+		if (option < onlineOptions.length - 1) {
+			if (showConnect) {
+				if (animateConnect) {
+				} else {
+					d.buffer.setFg('cyan');
+					menu.draw(onlineOptions[lastIndex], 2, 3 * lastIndex);
+				}
+			}
+			// cursor.x = textBuffer[option].length + 2;
+			cursor.x = cursorIndex + 2;
+			cursor.y = 3 * option + 1;
+			clearInterval(cursorBlink);
+			startCursorBlink();
+		} else {
+			cursor.active = false;
+			d.buffer.setFg('red');
+			menu.draw('> ' + onlineOptions[lastIndex], 0, 3 * lastIndex);
+		}
+		menu.render();
+		// process.stdout.cursorTo(1,1);
+		// console.log(textCursor);
+	}
 
 	// BUFFERS
 	this.start = function(option) {
@@ -117,6 +173,11 @@ const NewMenuDispaly = function(d) {
 	}
 	this.update = function(option) {
 		this.drawMenu(option);
+	}
+	this.moveBuffers = function() {
+		logo.move(logoX - 3, logoY);
+		menu.move(logoX - 2, optionsY);
+		menu.load();
 	}
 	this.clear = () => { menu.clear(); }
 	this.exit = function() {

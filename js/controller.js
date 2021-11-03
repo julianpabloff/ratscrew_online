@@ -1,8 +1,8 @@
 const Controller = function() {
 	this.update = function(key, shift = false, ctrl = false) {
 		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
-		this.space = this.backspace = this.alphaNum = false;
-		this.selectAll = this.copy = this.paste = false;
+		this.space = this.backspace = this.delete = this.alphaNum = false;
+		this.selectAll = this.copy = this.paste = this.home = this.end = false;
 		switch (key) {
 			case 'escape' : this.esc = true; break;
 			case 'left' : this.left = true; break;
@@ -13,6 +13,9 @@ const Controller = function() {
 			case 'return' : this.enter = true; break;
 			case 'space' : this.space = true; break;
 			case 'backspace' : this.backspace = true; break;
+			case 'delete' : this.delete = true; break;
+			case 'home' : this.home = true; break;
+			case 'end' : this.end = true; break;
 		}
 		if (key != undefined && key.length == 1) {
 			let charCode = key.charCodeAt(0);
@@ -33,69 +36,104 @@ const Controller = function() {
 	}
 	this.update();
 
+	this.screen = 'menu';
 	this.menuOption = 0;
 	this.prevMenuOption = 0;
 	// this.currentMenu = 'main';
 	// this.menus = ['local', 'online', 'settings'];
-	this.handleMenu = function() {
+	this.menu = function() {
+		const command = {};
 		this.prevMenuOption = this.menuOption;
-		if (this.up) {
-			if (this.menuOption == 0) this.menuOption = 2;
-			else this.menuOption--;
-			return 'select';
-		}
-		if (this.down) {
-			if (this.menuOption == 2) this.menuOption = 0;
-			else this.menuOption++;
+		if (this.up || this.down) {
+			this.menuOption = cycle(this.menuOption, 2, this.down);
 			return 'select';
 		}
 		if (this.enter) return 'enter';
 		if (this.esc) return 'quit';
-		return null;
+	}
+	function cycle(number, max, up = true) {
+		const end = up * max;
+		const start = max - end;
+		if (number == end) number = start;
+		else number = number - (2 * !up) + 1;
+		return number;
 	}
 
-	this.onlineStage = 0;
-	this.onlineBuffer = [[],[]];
+	// this.onlineStage = 0;
 	this.onlineOption = 0;
+	this.onlineBuffer = [[],[]];
+	this.cursor = {bufferIndex: 0, textIndex: 0};
+	this.cursorIndex = 0;
 	this.allFieldsFilled = false;
 	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
-	this.handleOnline = function() {
-		this.textChange = null;
-		if (this.up) {
-			if (this.onlineOption == 0) this.onlineOption = lastOnlineOptionsIndex;
-			else this.onlineOption--;
-		} else if (this.down || this.tab) {
-			if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
-			else this.onlineOption++;
-		}
-		if (this.onlineOption < this.onlineBuffer.length) {
+	this.online = function() {
+		if (this.up || this.down || this.tab) {
+			this.onlineOption = cycle(this.onlineOption, lastOnlineOptionsIndex, !this.up);
+			this.cursor.bufferIndex = this.onlineOption;
+			if (this.onlineOption < this.onlineBuffer.length)
+				this.cursorIndex = this.onlineBuffer[this.onlineOption].length;
+			return 'select';
+		} else if (this.onlineOption < this.onlineBuffer.length) {
 			const charArray = this.onlineBuffer[this.onlineOption];
+			let textChange = false;
 			if (this.alphaNum) {
-				this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
-				charArray.push(this.alphaNum);
+				charArray.splice(this.cursorIndex, 0, this.alphaNum);
+				this.cursorIndex++;
+				textChange = true;
 			} else if (this.space) {
-				this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: ' '};
 				charArray.push(' ');
-			} else if (this.backspace && charArray.length > 0) {
-				this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
-				charArray.pop();
-			}
-			this.allFieldsFilled = true;
-			for (let textArray of this.onlineBuffer) {
-				if (textArray.length == 0) {
-					this.allFieldsFilled = false;
-					break;
+				this.cursorIndex = charArray.length;
+				textChange = true;
+			} else if (this.backspace) {
+				if (charArray.length > 0 && this.cursorIndex > 0) {
+					charArray.splice(this.cursorIndex - 1, 1);
+					this.cursorIndex--;
+					textChange = true;
 				}
+			} else if (this.delete) {
+				if (charArray.length > 0 && this.cursorIndex < charArray.length) {
+					charArray.splice(this.cursorIndex, 1);
+					textChange = true;
+				}
+			} else if (this.left) {
+				if (this.cursorIndex > 0) {
+					this.cursorIndex--;
+					return 'select';
+				}
+			} else if (this.right) {
+				if (this.cursorIndex < this.onlineBuffer[this.onlineOption].length) {
+					this.cursorIndex++;
+					return 'select';
+				}
+			} else if (this.home) {
+				this.cursorIndex = 0;
+				return 'select';
+			} else if (this.end) {
+				this.cursorIndex = this.onlineBuffer[this.onlineOption].length;
+				return 'select';
 			}
-			const input = this.onlineBuffer[0].join('');
-			const match = [...input.matchAll(/[^:]+:\d+/g)][0];
-			if (input != match) this.allFieldsFilled = false;
-			if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
-			else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
+			if (textChange) {
+				this.allFieldsFilled = true;
+				for (let textArray of this.onlineBuffer) {
+					if (textArray.length == 0) {
+						this.allFieldsFilled = false;
+						break;
+					}
+				}
+				const input = this.onlineBuffer[0].join('');
+				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
+				if (input != match) this.allFieldsFilled = false;
+				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
+				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
+				return 'textChange';
+			}
+		} else if (this.enter) {
+			return 'connect';
 		}
 	}
-	this.handleScreen = function(screen) {
-		if (screen == 'menu') return this.handleMenu();
+	this.handleScreen = function() {
+		// if (screen == 'menu') return this.handleMenu();
+		return this[this.screen]();
 	}
 
 	this.addPlayerControls = function(players) {

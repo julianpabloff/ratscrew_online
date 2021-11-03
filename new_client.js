@@ -1,23 +1,35 @@
+'use strict';
+
 const keypress = require('keypress');
 const controller = new (require('./js/controller.js').Controller);
 const display = new(require('./js/display/new_display.js'));
 
 async function updateMenu(command) {
-	const option = controller.menuOption;
-	if (command == 'enter') {
-		await display.menu.drawMenuSelection(option);
-		display.menu.drawOnline(0);
-	} else if (command == 'quit') {
-		display.menu.exit();
-		display.exit();
-		process.exit();
-	} else {
-		display.menu.drawMenu(option);
+	if (controller.screen == 'menu') {
+		if (display.animating) return;
+		const option = controller.menuOption;
+		if (command == 'select') {
+			display.menu.drawMenu(option);
+		} else if (command == 'enter') {
+			await display.menu.drawMenuSelection(option);
+			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursorIndex, controller.allFieldsFilled];
+			display.menu.drawOnline(...params);
+			controller.screen = 'online';
+		} else if (command == 'quit') {
+			display.exit(screen);
+			process.exit();
+		}
+	} else if (controller.screen == 'online') {
+		if (command == 'connect') {
+		} else {
+			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursorIndex, controller.allFieldsFilled];
+			display.menu.drawOnline(...params);
+		}
 	}
 }
 
 const screenUpdates = {
-	menu: updateMenu
+	menu: updateMenu,
 };
 let screen = 'menu';
 let update = screenUpdates[screen];
@@ -38,17 +50,16 @@ process.stdin.on('keypress', function(chunk, key) {
 	const keyPressed = (key == undefined) ? chunk : key.name;
 	let params = [keyPressed];
 	if (key != undefined) params.push(key.shift, key.ctrl);
-	if (controller.esc && screen == 'menu') {
-		display.exit();
-		process.exit();
-	}
-	if (display.animating) return;
 	const keyValid = controller.update(...params);
 	if (keyValid) {
-		const command = controller.handleScreen(screen);
-		if (command != null) {
+		const command = controller.handleScreen(controller.screen);
+		if (command) {
 			update(command);
 		}
+	}
+	if (controller.esc) {
+		display.exit();
+		process.exit();
 	}
 });
 
@@ -57,15 +68,11 @@ let columns = process.stdout.columns;
 let currentlyResizing = false;
 let resizeTimer = 0;
 let resizeInterval = 17;
-/*
 setInterval(() => {
-	const windowChanged = rows != process.stdout.rows || columns != process.stdout.columns;
-	if (windowChanged) {
+	if (rows != process.stdout.rows || columns != process.stdout.columns) {
 		display.init();
-		if (screen == 'online') {
-			display.menu.clearCursor();
-		}
-		process.stdout.cursorTo(0,0);
+		display.menu.toggleCursor(false);
+		// process.stdout.cursorTo(0,0);
 		currentlyResizing = true;
 		resizeTimer = 0;
 		rows = process.stdout.rows;
@@ -74,10 +81,8 @@ setInterval(() => {
 		resizeTimer += resizeInterval;
 		if (resizeTimer > 1000) {
 			currentlyResizing = false;
-			display.resize();
-			display.menu.setSize();
-			startScreen(screen, screen);
+			display.menu.toggleCursor(true);
+			display.resize(screen);
 		}
 	}
 }, resizeInterval);
-*/
