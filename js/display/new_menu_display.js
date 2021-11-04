@@ -117,27 +117,40 @@ const NewMenuDispaly = function(d) {
 		cursor.active = show;
 	}
 
+	function drawBufferContnet(contentArray, x, y, selected) {
+		stdout.cursorTo(x, y);
+		if (selected) d.setFg('red');
+		else d.setFg('white');
+		if (contentArray.length > 0) contentArray.forEach(char => stdout.write(char));
+		else
+			if (!selected) stdout.write('...');
+			else stdout.write('   ');
+	}
 	// ONLINE
 	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
-	function drawBufferContent(charArray, x, y, selected) {
-		menu.cursorTo(x, y);
-		if (selected) d.buffer.setFg('red');
-		else d.buffer.setFg('white');
-		if (charArray.length > 0)
-			charArray.forEach(char => menu.write(char));
-		else if (!selected)
-			menu.write('...');
-	}
-	this.drawOnline = function(option, textBuffer, cursorIndex, showConnect, animateConnect = false) {
+	this.drawOnline = function(option, textBuffer, textCursor, showConnect, animateConnect = false) {
 		for (let i = 0; i < onlineOptions.length - 1; i++) {
 			const value = onlineOptions[i];
 			const y = 3 * i;
+			const inputText = textBuffer[i];
 			if (i == option) {
-				d.buffer.setFg('red');
-				menu.draw('>', 0, y);
-			} else d.buffer.setFg('white');
-			menu.draw(value, 2, y);
-			drawBufferContent(textBuffer[i], 2, y + 1, (i == option));
+				d.buffer.setColor('red', 'reset');
+				menu.draw('> ' + value, 0, y);
+				menu.cursorTo(2, y + 1);
+				if (textCursor.selected)
+					d.buffer.setColor('black', 'red');
+				if (inputText.length > 0)
+					inputText.forEach(char => menu.write(char));
+			} else {
+				d.buffer.setColor('white', 'reset');
+				menu.draw(value, 2, y);
+				menu.cursorTo(2, y + 1);
+				if (inputText.length > 0)
+					inputText.forEach(char => menu.write(char));
+				else menu.write('...');
+			}
+			// drawBufferContent(textBuffer[i], 2, y + 1, (i == option), textCursor.selected);
+			d.buffer.setBg('reset');
 		}
 		menu.save();
 		const lastIndex = onlineOptions.length - 1;
@@ -150,10 +163,12 @@ const NewMenuDispaly = function(d) {
 				}
 			}
 			// cursor.x = textBuffer[option].length + 2;
-			cursor.x = cursorIndex + 2;
-			cursor.y = 3 * option + 1;
 			clearInterval(cursorBlink);
-			startCursorBlink();
+			if (!textCursor.selected) {
+				cursor.x = textCursor.index + 2;
+				cursor.y = 3 * option + 1;
+				startCursorBlink();
+			}
 		} else {
 			cursor.active = false;
 			d.buffer.setFg('red');

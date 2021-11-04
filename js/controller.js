@@ -1,3 +1,5 @@
+const clipboard = require('native-clip');
+
 const Controller = function() {
 	this.update = function(key, shift = false, ctrl = false) {
 		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
@@ -21,9 +23,9 @@ const Controller = function() {
 			let charCode = key.charCodeAt(0);
 			if (ctrl)
 				switch (key) {
-					case 'a' : this.selectAll = this.onlineOption; return true;
-					case 'c' : this.copy = this.onlineOption; return true;
-					case 'v' : this.paste = this.onlineOption; return true;
+					case 'a' : this.selectAll = true; return true;
+					case 'c' : this.copy = true; return true;
+					case 'v' : this.paste = true; return true;
 					default: return false;
 				}
 			else {
@@ -62,8 +64,8 @@ const Controller = function() {
 	// this.onlineStage = 0;
 	this.onlineOption = 0;
 	this.onlineBuffer = [[],[]];
-	this.cursor = {bufferIndex: 0, textIndex: 0};
 	this.cursorIndex = 0;
+	this.cursor = { index: 0, selected: false };
 	this.allFieldsFilled = false;
 	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
 	this.online = function() {
@@ -71,46 +73,86 @@ const Controller = function() {
 			this.onlineOption = cycle(this.onlineOption, lastOnlineOptionsIndex, !this.up);
 			this.cursor.bufferIndex = this.onlineOption;
 			if (this.onlineOption < this.onlineBuffer.length)
-				this.cursorIndex = this.onlineBuffer[this.onlineOption].length;
+				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
+			this.cursor.selected = false;
 			return 'select';
 		} else if (this.onlineOption < this.onlineBuffer.length) {
-			const charArray = this.onlineBuffer[this.onlineOption];
+			let charArray = this.onlineBuffer[this.onlineOption];
 			let textChange = false;
-			if (this.alphaNum) {
-				charArray.splice(this.cursorIndex, 0, this.alphaNum);
-				this.cursorIndex++;
-				textChange = true;
-			} else if (this.space) {
-				charArray.push(' ');
-				this.cursorIndex = charArray.length;
-				textChange = true;
-			} else if (this.backspace) {
-				if (charArray.length > 0 && this.cursorIndex > 0) {
-					charArray.splice(this.cursorIndex - 1, 1);
-					this.cursorIndex--;
-					textChange = true;
+			if (this.alphaNum || this.space) {
+				const char = this.space ? ' ' : this.alphaNum;
+				if (!this.cursor.selected) {
+					charArray.splice(this.cursor.index, 0, char);
+					this.cursor.index++;
+				} else {
+					this.onlineBuffer[this.onlineOption] = [char];
+					this.cursor.index = 1;
+					this.cursor.selected = false;
 				}
-			} else if (this.delete) {
-				if (charArray.length > 0 && this.cursorIndex < charArray.length) {
-					charArray.splice(this.cursorIndex, 1);
+				textChange = true;
+			} else if (this.backspace || this.delete) {
+				if (charArray.length > 0) {
+					if (this.cursor.selected) {
+						this.onlineBuffer[this.onlineOption] = [];
+						this.cursor.index = 0;
+						this.cursor.selected = false;
+					} else if (this.backspace) {
+						if (this.cursor.index > 0) {
+							charArray.splice(this.cursor.index - 1, 1);
+							this.cursor.index--;
+						}
+					} else if (this.delete) {
+						if (this.cursor.index < charArray.length) {
+							charArray.splice(this.cursor.index, 1);
+							textChange = true;
+						}
+					}
 					textChange = true;
 				}
 			} else if (this.left) {
-				if (this.cursorIndex > 0) {
-					this.cursorIndex--;
+				if (this.cursor.index > 0) {
+					this.cursor.index--;
+					this.cursor.selected = false;
 					return 'select';
 				}
 			} else if (this.right) {
-				if (this.cursorIndex < this.onlineBuffer[this.onlineOption].length) {
-					this.cursorIndex++;
+				if (this.cursor.index < this.onlineBuffer[this.onlineOption].length) {
+					this.cursor.index++;
+					this.cursor.selected = false;
 					return 'select';
 				}
 			} else if (this.home) {
-				this.cursorIndex = 0;
+				this.cursor.index = 0;
+				this.cursor.selected = false;
 				return 'select';
 			} else if (this.end) {
-				this.cursorIndex = this.onlineBuffer[this.onlineOption].length;
+				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
+				this.cursor.selected = false;
 				return 'select';
+			} else if (this.selectAll && charArray.length > 0) {
+				this.cursor.selected = true;
+				return 'select';
+			} else if (this.copy && this.cursor.selected) {
+				const input = charArray.join('');
+				clipboard.write(input);
+				this.cursor.selected = false;
+				return 'select';
+			} else if (this.paste) {
+				const text = clipboard.read();
+				if (text != null) {
+					const clipCharArray = [];
+					for (const char of text) clipCharArray.push(char);
+					if (this.cursor.selected) {
+						this.onlineBuffer[this.onlineOption] = clipCharArray;
+						this.cursor.index = clipCharArray.length;
+						this.cursor.selected = false;
+					}
+					else {
+						charArray.splice(this.cursor.index, 0, ...clipCharArray);
+						this.cursor.index += clipCharArray.length;
+					}
+					textChange = true;
+				}
 			}
 			if (textChange) {
 				this.allFieldsFilled = true;

@@ -84,17 +84,19 @@ const DisplayBuffer = function(x, y, width, height, manager) {
 			if (code != prevCode || colorCode != prevColorCode) {
 				const fgCode = colorCode >> 4;
 				const bgCode = colorCode & 0x0F;
-				if (fgCode != currentColor.fg || colorCode != manager.lastRenderedColor) {
-					process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
-					currentColor.fg = fgCode;
-					manager.lastRenderedColor = colorCode;
-					colorChangeCount++;
-				}
-				if (bgCode != currentColor.bg || colorCode != manager.lastRenderedColor) {
-					process.stdout.write('\x1b[' + (39 * (bgCode != 0) + bgCode).toString() + 'm');
-					currentColor.bg = bgCode;
-					manager.lastRenderedColor = colorCode;
-					colorChangeCount++;
+				if (fgCode != currentColor.fg || bgCode != currentColor.bg) {
+					if (fgCode == 0 || bgCode == 0) {
+						process.stdout.write('\x1b[0m');
+						currentColor.fg = currentColor.bg = 0;
+					}
+					if (fgCode > 0) {
+						process.stdout.write('\x1b[' + (29 + fgCode).toString() + 'm');
+						currentColor.fg = fgCode;
+					}
+					if (bgCode > 0) {
+						process.stdout.write('\x1b[' + (39 + bgCode).toString() + 'm');
+						currentColor.bg = bgCode;
+					}
 				}
 				const x = i % this.width;
 				const y = Math.floor(i / this.width);

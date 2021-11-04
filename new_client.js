@@ -1,5 +1,3 @@
-'use strict';
-
 const keypress = require('keypress');
 const controller = new (require('./js/controller.js').Controller);
 const display = new(require('./js/display/new_display.js'));
@@ -12,7 +10,7 @@ async function updateMenu(command) {
 			display.menu.drawMenu(option);
 		} else if (command == 'enter') {
 			await display.menu.drawMenuSelection(option);
-			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursorIndex, controller.allFieldsFilled];
+			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
 			display.menu.drawOnline(...params);
 			controller.screen = 'online';
 		} else if (command == 'quit') {
@@ -22,7 +20,7 @@ async function updateMenu(command) {
 	} else if (controller.screen == 'online') {
 		if (command == 'connect') {
 		} else {
-			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursorIndex, controller.allFieldsFilled];
+			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
 			display.menu.drawOnline(...params);
 		}
 	}
