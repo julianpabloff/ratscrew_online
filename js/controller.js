@@ -48,7 +48,7 @@ const Controller = function() {
 		this.prevMenuOption = this.menuOption;
 		if (this.up || this.down) {
 			this.menuOption = cycle(this.menuOption, 2, this.down);
-			return 'select';
+			return 'update';
 		}
 		if (this.enter) return 'enter';
 		if (this.esc) return 'quit';
@@ -69,13 +69,14 @@ const Controller = function() {
 	this.allFieldsFilled = false;
 	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
 	this.online = function() {
+		if (this.esc) return 'quit';
 		if (this.up || this.down || this.tab) {
 			this.onlineOption = cycle(this.onlineOption, lastOnlineOptionsIndex, !this.up);
 			this.cursor.bufferIndex = this.onlineOption;
 			if (this.onlineOption < this.onlineBuffer.length)
 				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
 			this.cursor.selected = false;
-			return 'select';
+			return 'update';
 		} else if (this.onlineOption < this.onlineBuffer.length) {
 			let charArray = this.onlineBuffer[this.onlineOption];
 			let textChange = false;
@@ -113,30 +114,29 @@ const Controller = function() {
 				if (this.cursor.index > 0) {
 					this.cursor.index--;
 					this.cursor.selected = false;
-					return 'select';
+					return 'update';
 				}
 			} else if (this.right) {
-				if (this.cursor.index < this.onlineBuffer[this.onlineOption].length) {
+				if (this.cursor.index < this.onlineBuffer[this.onlineOption].length)
 					this.cursor.index++;
-					this.cursor.selected = false;
-					return 'select';
-				}
+				this.cursor.selected = false;
+				return 'update';
 			} else if (this.home) {
 				this.cursor.index = 0;
 				this.cursor.selected = false;
-				return 'select';
+				return 'update';
 			} else if (this.end) {
 				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
 				this.cursor.selected = false;
-				return 'select';
+				return 'update';
 			} else if (this.selectAll && charArray.length > 0) {
 				this.cursor.selected = true;
-				return 'select';
+				return 'update';
 			} else if (this.copy && this.cursor.selected) {
 				const input = charArray.join('');
 				clipboard.write(input);
 				this.cursor.selected = false;
-				return 'select';
+				return 'update';
 			} else if (this.paste) {
 				const text = clipboard.read();
 				if (text != null) {
@@ -155,6 +155,7 @@ const Controller = function() {
 				}
 			}
 			if (textChange) {
+				const temp = this.allFieldsFilled;
 				this.allFieldsFilled = true;
 				for (let textArray of this.onlineBuffer) {
 					if (textArray.length == 0) {
@@ -167,7 +168,7 @@ const Controller = function() {
 				if (input != match) this.allFieldsFilled = false;
 				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
 				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
-				return 'textChange';
+				return temp != this.allFieldsFilled ? 'toggleConnect' : 'update';
 			}
 		} else if (this.enter) {
 			return 'connect';

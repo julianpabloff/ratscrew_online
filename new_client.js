@@ -6,10 +6,11 @@ async function updateMenu(command) {
 	if (controller.screen == 'menu') {
 		if (display.animating) return;
 		const option = controller.menuOption;
-		if (command == 'select') {
+		if (command == 'update') {
 			display.menu.drawMenu(option);
 		} else if (command == 'enter') {
 			await display.menu.drawMenuSelection(option);
+			controller.onlineOption = 0;
 			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
 			display.menu.drawOnline(...params);
 			controller.screen = 'online';
@@ -19,10 +20,15 @@ async function updateMenu(command) {
 		}
 	} else if (controller.screen == 'online') {
 		if (command == 'connect') {
-		} else {
-			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
-			display.menu.drawOnline(...params);
+		} else if (command == 'quit') {
+			display.menu.hideCursor();
+			display.menu.drawMenu(controller.menuOption);
+			controller.screen = 'menu';
+			return;
 		}
+		const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
+		if (command == 'toggleConnect') params.push(true);
+		display.menu.drawOnline(...params);
 	}
 }
 
@@ -55,10 +61,10 @@ process.stdin.on('keypress', function(chunk, key) {
 			update(command);
 		}
 	}
-	if (controller.esc) {
-		display.exit();
-		process.exit();
-	}
+	// if (controller.esc) {
+	// 	display.exit();
+	// 	process.exit();
+	// }
 });
 
 let rows = process.stdout.rows;
@@ -69,7 +75,7 @@ let resizeInterval = 17;
 setInterval(() => {
 	if (rows != process.stdout.rows || columns != process.stdout.columns) {
 		display.init();
-		display.menu.toggleCursor(false);
+		display.menu.hideCursor();
 		// process.stdout.cursorTo(0,0);
 		currentlyResizing = true;
 		resizeTimer = 0;

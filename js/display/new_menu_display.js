@@ -71,7 +71,6 @@ const NewMenuDispaly = function(d) {
 	}
 	const duration = 200;
 	this.drawMenuSelection = async function(option) {
-		d.animating = true;
 		return new Promise(function(resolve) {
 			for (let i = 0; i < menuOptions.length; i++) {
 				const selection = menuOptions[i];
@@ -81,7 +80,6 @@ const NewMenuDispaly = function(d) {
 				else d.dissolve(menu, selection.length, 2, 2 * i, duration);
 			}
 			setTimeout(() => {
-				d.animating = false;
 				resolve();
 			}, duration + 175);
 		});
@@ -112,6 +110,12 @@ const NewMenuDispaly = function(d) {
 				menu.paint();
 			}
 		}, 500);
+	}
+	this.hideCursor = function() {
+		clearInterval(cursorBlink);
+		cursor.visible = false;
+		drawCursor();
+		cursor.active = false;
 	}
 	this.toggleCursor = function(show) {
 		cursor.active = show;
@@ -152,31 +156,34 @@ const NewMenuDispaly = function(d) {
 			// drawBufferContent(textBuffer[i], 2, y + 1, (i == option), textCursor.selected);
 			d.buffer.setBg('reset');
 		}
-		menu.save();
 		const lastIndex = onlineOptions.length - 1;
-		if (option < onlineOptions.length - 1) {
-			if (showConnect) {
-				if (animateConnect) {
-				} else {
-					d.buffer.setFg('cyan');
-					menu.draw(onlineOptions[lastIndex], 2, 3 * lastIndex);
-				}
-			}
-			// cursor.x = textBuffer[option].length + 2;
-			clearInterval(cursorBlink);
-			if (!textCursor.selected) {
-				cursor.x = textCursor.index + 2;
-				cursor.y = 3 * option + 1;
-				startCursorBlink();
+		const withinBuffer = option < onlineOptions.length - 1;
+		const connect = onlineOptions[lastIndex];
+		const connectY = 3 * lastIndex;
+		if (withinBuffer) {
+			if ((showConnect && !animateConnect) || (!showConnect && animateConnect)) {
+				d.buffer.setFg('cyan');
+				menu.draw(connect, 2, connectY);
 			}
 		} else {
 			cursor.active = false;
 			d.buffer.setFg('red');
-			menu.draw('> ' + onlineOptions[lastIndex], 0, 3 * lastIndex);
+			menu.draw('> ' + connect, 0, connectY);
 		}
+		menu.save();
+		clearInterval(cursorBlink);
+		if (!textCursor.selected && withinBuffer) {
+			cursor.x = textCursor.index + 2;
+			cursor.y = 3 * option + 1;
+			startCursorBlink();
+		}
+		if (d.animating) d.stopAnimating();
 		menu.render();
-		// process.stdout.cursorTo(1,1);
-		// console.log(textCursor);
+		if (animateConnect) {
+			const params = [menu, connect.length, 2, connectY, 300];
+			if (showConnect) params.push(connect, 'cyan');
+			d.dissolve(...params);
+		}
 	}
 
 	// BUFFERS

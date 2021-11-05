@@ -71,6 +71,7 @@ const NewDisplay = function() {
 
 	// Animations
 	this.animating = false;
+	const animations = [];
 	this.dissolve = function(buffer, width, x, y, duration, content = false, color = false) {
 		const positions = new Uint8Array(width);
 		const sequence = new Uint8Array(width);
@@ -89,29 +90,31 @@ const NewDisplay = function() {
 			}
 		}
 		let increment = 0;
-		const display = this;
 		function dissolveHelper() {
 			if (increment == width) {
+				this.animating = false;
 				clearInterval(dissolveInterval);
 			} else {
 				const char = content ? content[sequence[increment]] : ' ';
-				if (color) display.setFg(color);
+				if (color) this.buffer.setFg(color);
 				buffer.draw(char, x + sequence[increment], y);
 				buffer.paint();
 				increment++;
 			}
 		}
-		const dissolveInterval = setInterval(dissolveHelper, duration / width);
+		const dissolveInterval = setInterval(dissolveHelper.bind(this), duration / width);
+		animations.push(dissolveInterval);
+		this.animating = true;
 	}
 	this.animateSelection = function(buffer, text, x, y, duration) {
 		const distance = text.length + 3;
 		let position = 0;
-		const display = this;
 		function drawAnimation() {
-			display.setFg('red');
+			this.buffer.setFg('red');
 			if (position == distance) {
 				buffer.draw(' ', x - 2 + position, y);
 				buffer.paint();
+				this.animating = false;
 				clearInterval(moveRight);
 			} else {
 				buffer.draw(' > ', x - 2 + position, y);
@@ -119,7 +122,15 @@ const NewDisplay = function() {
 				position++;
 			}
 		}
-		moveRight = setInterval(drawAnimation, duration / distance);
+		const moveRight = setInterval(drawAnimation.bind(this), duration / distance);
+		animations.push(moveRight);
+		this.animating = true;
+	}
+	this.stopAnimating = function() {
+		for (const animation of animations) {
+			clearInterval(animation);
+		}
+		this.animating = false;
 	}
 }
 
