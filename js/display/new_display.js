@@ -1,4 +1,4 @@
-const BufferModule = require('./buffer.js');
+const BufferManager = require('./buffer.js');
 const NewMenuDisplay = require('./new_menu_display.js');
 
 const NewDisplay = function() {
@@ -25,12 +25,14 @@ const NewDisplay = function() {
 	this.centerHeight = (height) => { return Math.floor(rows/2 - height/2); }
 
 	// Buffers
-	this.buffer = new BufferModule.BufferManager();
+	this.buffer = new BufferManager();
+	/*
 	this.addBuffer = function(x, y, width, height, screen) {
 		const displayBuffer = new BufferModule.DisplayBuffer(x, y, width, height, this.buffer, screen);
 		this.buffer.addBuffer(displayBuffer, screen);
 		return displayBuffer;
 	}
+	*/
 
 	// Colors
 	const colors = {

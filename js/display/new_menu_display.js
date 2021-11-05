@@ -29,7 +29,7 @@ const NewMenuDispaly = function(d) {
 	this.setSize();
 
 	// LOGO
-	const logo = d.addBuffer(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
+	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight);
 
 	this.drawLogo = function() {
 		const offset = Math.floor(logoHeight / 2) - 2;
@@ -52,7 +52,8 @@ const NewMenuDispaly = function(d) {
 	}
 
 	// MENU
-	const menu = d.addBuffer(logoX - 2, optionsY, 35, 15, 'menu');
+	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15, 'menu');
+	menu.transparent = false;
 
 	const menuOptions = ['LOCAL', 'ONLINE', 'SETTINGS'];
 	this.drawMenu = function(option) {
