@@ -28,9 +28,13 @@ const NewMenuDispaly = function(d) {
 	let logoX, logoY, optionsY, lobbyX, lobbyEndX;
 	this.setSize();
 
-	// LOGO
+	// BUFFERS
 	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight);
+	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15);
+	menu.transparent = false;
+	const menuAnimation = d.buffer.new(logoX - 2, optionsY, 35, 15, 1);
 
+	// LOGO
 	this.drawLogo = function() {
 		const offset = Math.floor(logoHeight / 2) - 2;
 		for (let i = 0; i < logoHeight; i++) {
@@ -52,9 +56,6 @@ const NewMenuDispaly = function(d) {
 	}
 
 	// MENU
-	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15, 'menu');
-	menu.transparent = false;
-
 	const menuOptions = ['LOCAL', 'ONLINE', 'SETTINGS'];
 	this.drawMenu = function(option) {
 		for (let i = 0; i < menuOptions.length; i++) {
@@ -77,8 +78,9 @@ const NewMenuDispaly = function(d) {
 				const selection = menuOptions[i];
 				const x = menu.x + 2;
 				const y = menu.y + 2 * i;
-				if (i == option) d.animateSelection(menu, selection, 2, 2 * i, duration);
-				else d.dissolve(menu, selection.length, 2, 2 * i, duration);
+				// if (i == option) d.animateSelection(menuAnimation, selection, 2, 2 * i, duration);
+				if (i == option) continue;
+				else d.dissolve(menuAnimation, selection.length, 2, 2 * i, duration);
 			}
 			setTimeout(() => {
 				resolve();
@@ -122,15 +124,6 @@ const NewMenuDispaly = function(d) {
 		cursor.active = show;
 	}
 
-	function drawBufferContnet(contentArray, x, y, selected) {
-		stdout.cursorTo(x, y);
-		if (selected) d.setFg('red');
-		else d.setFg('white');
-		if (contentArray.length > 0) contentArray.forEach(char => stdout.write(char));
-		else
-			if (!selected) stdout.write('...');
-			else stdout.write('   ');
-	}
 	// ONLINE
 	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
 	this.drawOnline = function(option, textBuffer, textCursor, showConnect, animateConnect = false) {
@@ -154,23 +147,12 @@ const NewMenuDispaly = function(d) {
 					inputText.forEach(char => menu.write(char));
 				else menu.write('...');
 			}
-			// drawBufferContent(textBuffer[i], 2, y + 1, (i == option), textCursor.selected);
 			d.buffer.setBg('reset');
 		}
 		const lastIndex = onlineOptions.length - 1;
 		const withinBuffer = option < onlineOptions.length - 1;
 		const connect = onlineOptions[lastIndex];
 		const connectY = 3 * lastIndex;
-		if (withinBuffer) {
-			if ((showConnect && !animateConnect) || (!showConnect && animateConnect)) {
-				d.buffer.setFg('cyan');
-				menu.draw(connect, 2, connectY);
-			}
-		} else {
-			cursor.active = false;
-			d.buffer.setFg('red');
-			menu.draw('> ' + connect, 0, connectY);
-		}
 		menu.save();
 		clearInterval(cursorBlink);
 		if (!textCursor.selected && withinBuffer) {
@@ -178,28 +160,38 @@ const NewMenuDispaly = function(d) {
 			cursor.y = 3 * option + 1;
 			startCursorBlink();
 		}
-		if (d.animating) d.stopAnimating();
-		menu.render();
 		if (animateConnect) {
-			const params = [menu, connect.length, 2, connectY, 300];
+			menu.render();
+			const params = [menuAnimation, connect.length, 2, connectY, 250];
 			if (showConnect) params.push(connect, 'cyan');
+			if (d.animating) d.stopAnimating(menuAnimation);
 			d.dissolve(...params);
+		} else if (withinBuffer && showConnect && !d.animating) {
+			d.buffer.setFg('cyan');
+			menu.draw(connect, 2, connectY);
+			menu.render();
+		} else if (!withinBuffer && showConnect) {
+			d.stopAnimating(menuAnimation);
+			cursor.active = false;
+			d.buffer.setFg('red');
+			menu.draw('> ' + connect, 0, connectY);
+			menu.render();
+		} else {
+			menu.render();
 		}
 	}
 
-	// BUFFERS
+	// PROCESS
 	this.start = function(option) {
 		logo.outline('green');
 		menu.outline('magenta');
 		this.drawLogo();
 		this.drawMenu(option);
 	}
-	this.update = function(option) {
-		this.drawMenu(option);
-	}
 	this.moveBuffers = function() {
 		logo.move(logoX - 3, logoY);
 		menu.move(logoX - 2, optionsY);
+		menuAnimation.move(logoX - 2, optionsY);
 		menu.load();
 	}
 	this.clear = () => { menu.clear(); }
@@ -207,10 +199,9 @@ const NewMenuDispaly = function(d) {
 		menu.clear();
 		logo.clear();
 	}
-
-	this.dissolve = function() {
-		d.dissolve(7, menu.x, menu.y, 1000);
-	}
+	// this.dissolve = function() {
+	// 	d.dissolve(7, menu.x, menu.y, 1000);
+	// }
 }
 
 module.exports = NewMenuDispaly;

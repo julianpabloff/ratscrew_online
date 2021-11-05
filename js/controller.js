@@ -68,6 +68,9 @@ const Controller = function() {
 	this.cursor = { index: 0, selected: false };
 	this.allFieldsFilled = false;
 	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
+	this.resetCursorIndex = function(option) {
+		this.cursor.index = this.onlineBuffer[option].length;
+	}
 	this.online = function() {
 		if (this.esc) return 'quit';
 		if (this.up || this.down || this.tab) {

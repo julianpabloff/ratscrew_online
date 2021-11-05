@@ -132,7 +132,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		process.stdout.cursorTo(x, y);
 		process.stdout.write(string);
 	}
-	this.render = function(clearLastFrame = true, debug = false) {
+	this.render = function(clearLastFrame = true) {
 		for (let i = 0; i < this.size; i++) {
 			let code = this.current[i];
 			const prevCode = this.previous[i];
@@ -205,8 +205,8 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	}
 
 	this.clear = function() {
-		this.current = bufferWithSpaces(this.size);
-		this.colors = new Uint16Array(this.size);
+		this.current = new Uint16Array(this.size);
+		this.colors = new Uint8Array(this.size);
 		this.render();
 		this.empty = true;
 		if (this.outlined) this.outline('reset', false);

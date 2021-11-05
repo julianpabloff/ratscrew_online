@@ -11,6 +11,7 @@ async function updateMenu(command) {
 		} else if (command == 'enter') {
 			await display.menu.drawMenuSelection(option);
 			controller.onlineOption = 0;
+			controller.resetCursorIndex(0);
 			const params = [controller.onlineOption, controller.onlineBuffer, controller.cursor, controller.allFieldsFilled];
 			display.menu.drawOnline(...params);
 			controller.screen = 'online';
@@ -42,11 +43,8 @@ function switchTo(name) {
 	update = screenUpdates[name];
 }
 
-function render(data, type = 'update') {
-	display.update(screen, type, data);
-}
 display.init();
-render(0, 'start');
+display.menu.start(controller.menuOption);
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);

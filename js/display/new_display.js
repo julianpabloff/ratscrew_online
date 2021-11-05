@@ -26,13 +26,6 @@ const NewDisplay = function() {
 
 	// Buffers
 	this.buffer = new BufferManager();
-	/*
-	this.addBuffer = function(x, y, width, height, screen) {
-		const displayBuffer = new BufferModule.DisplayBuffer(x, y, width, height, this.buffer, screen);
-		this.buffer.addBuffer(displayBuffer, screen);
-		return displayBuffer;
-	}
-	*/
 
 	// Colors
 	const colors = {
@@ -95,6 +88,7 @@ const NewDisplay = function() {
 		function dissolveHelper() {
 			if (increment == width) {
 				this.animating = false;
+				buffer.paint();
 				clearInterval(dissolveInterval);
 			} else {
 				const char = content ? content[sequence[increment]] : ' ';
@@ -104,9 +98,10 @@ const NewDisplay = function() {
 				increment++;
 			}
 		}
+		this.buffer.resetColor();
 		const dissolveInterval = setInterval(dissolveHelper.bind(this), duration / width);
-		animations.push(dissolveInterval);
 		this.animating = true;
+		animations.push(dissolveInterval);
 	}
 	this.animateSelection = function(buffer, text, x, y, duration) {
 		const distance = text.length + 3;
@@ -125,13 +120,15 @@ const NewDisplay = function() {
 			}
 		}
 		const moveRight = setInterval(drawAnimation.bind(this), duration / distance);
-		animations.push(moveRight);
 		this.animating = true;
+		animations.push(moveRight);
 	}
-	this.stopAnimating = function() {
+	this.stopAnimating = function(buffer) {
 		for (const animation of animations) {
 			clearInterval(animation);
 		}
+		buffer.clear();
+		// buffer.transparent = true;
 		this.animating = false;
 	}
 }
