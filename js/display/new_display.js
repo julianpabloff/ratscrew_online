@@ -66,6 +66,7 @@ const NewDisplay = function() {
 
 	// Animations
 	this.animating = false;
+	this.waitForAnimation = false;
 	const animations = [];
 	this.dissolve = function(buffer, width, x, y, duration, content = false, color = false) {
 		const positions = new Uint8Array(width);
@@ -87,8 +88,8 @@ const NewDisplay = function() {
 		let increment = 0;
 		function dissolveHelper() {
 			if (increment == width) {
-				this.animating = false;
 				buffer.paint();
+				this.animating = false;
 				clearInterval(dissolveInterval);
 			} else {
 				const char = content ? content[sequence[increment]] : ' ';
@@ -98,7 +99,6 @@ const NewDisplay = function() {
 				increment++;
 			}
 		}
-		this.buffer.resetColor();
 		const dissolveInterval = setInterval(dissolveHelper.bind(this), duration / width);
 		this.animating = true;
 		animations.push(dissolveInterval);
@@ -127,8 +127,7 @@ const NewDisplay = function() {
 		for (const animation of animations) {
 			clearInterval(animation);
 		}
-		buffer.clear();
-		// buffer.transparent = true;
+		if (buffer.empty) buffer.clear();
 		this.animating = false;
 	}
 }

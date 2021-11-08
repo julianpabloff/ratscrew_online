@@ -46,6 +46,28 @@ const BufferManager = function() {
 		}
 		return false;
 	}
+	// All coordinates are buffer relative
+	// first four coordinates are for target selection, final x and y are the destination cooridinates
+	this.clone = function(target, destination, leftX, topY, rightX, bottomY, x, y) {
+		const width = rightX - leftX + 1;
+		const height = bottomY - topY + 1;
+		if (width < 1 || height < 1) return;
+		const area = width * height;
+		let readIndex = target.coordinateIndex(leftX, topY);
+		let writeIndex = destination.coordinateIndex(x, y);
+		let i = 0;
+		do {
+			destination.current[writeIndex] = target.current[readIndex];
+			i++;
+			if (i % width == 0) {
+				readIndex = target.coordinateIndex(leftX, topY + (i / width));
+				writeIndex = destination.coordinateIndex(x, y + (i / width));
+			} else {
+				readIndex++;
+				writeIndex++;
+			}
+		} while (i < area);
+	}
 
 	// Colors
 	this.color = 0;

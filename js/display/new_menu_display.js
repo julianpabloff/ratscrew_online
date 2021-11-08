@@ -73,16 +73,18 @@ const NewMenuDispaly = function(d) {
 	}
 	const duration = 200;
 	this.drawMenuSelection = async function(option) {
+		d.waitForAnimation = true;
 		return new Promise(function(resolve) {
 			for (let i = 0; i < menuOptions.length; i++) {
 				const selection = menuOptions[i];
 				const x = menu.x + 2;
 				const y = menu.y + 2 * i;
-				// if (i == option) d.animateSelection(menuAnimation, selection, 2, 2 * i, duration);
-				if (i == option) continue;
+				if (i == option) d.animateSelection(menuAnimation, selection, 2, 2 * i, duration);
+				// if (i == option) continue;
 				else d.dissolve(menuAnimation, selection.length, 2, 2 * i, duration);
 			}
 			setTimeout(() => {
+				d.waitForAnimation = false;
 				resolve();
 			}, duration + 175);
 		});
@@ -155,35 +157,45 @@ const NewMenuDispaly = function(d) {
 		const connectY = 3 * lastIndex;
 		menu.save();
 		clearInterval(cursorBlink);
-		if (!textCursor.selected && withinBuffer) {
-			cursor.x = textCursor.index + 2;
-			cursor.y = 3 * option + 1;
-			startCursorBlink();
-		}
-		if (animateConnect) {
-			menu.render();
-			const params = [menuAnimation, connect.length, 2, connectY, 250];
-			if (showConnect) params.push(connect, 'cyan');
-			if (d.animating) d.stopAnimating(menuAnimation);
-			d.dissolve(...params);
-		} else if (withinBuffer && showConnect && !d.animating) {
+		if (withinBuffer) {
 			d.buffer.setFg('cyan');
-			menu.draw(connect, 2, connectY);
-			menu.render();
-		} else if (!withinBuffer && showConnect) {
+			if (showConnect) {
+				menu.draw(connect, 2, connectY);
+			}
+			if (!textCursor.selected) {
+				cursor.x = textCursor.index + 2;
+				cursor.y = 3 * option + 1;
+				startCursorBlink();
+			}
+			if (animateConnect) {
+				const params = [menuAnimation, connect.length, 2, connectY, 250];
+				if (showConnect) {
+					startingFrame = ' '.repeat(connect.length);
+					params.push(connect, 'cyan');
+				} else startingFrame = connect;
+				if (d.animating) d.stopAnimating(menuAnimation);
+				d.buffer.setFg('cyan');
+				menuAnimation.draw(startingFrame, 2, connectY);
+				menuAnimation.render();
+				d.dissolve(...params);
+			}
+		} else {
 			d.stopAnimating(menuAnimation);
 			cursor.active = false;
 			d.buffer.setFg('red');
 			menu.draw('> ' + connect, 0, connectY);
-			menu.render();
-		} else {
-			menu.render();
+		}
+		menu.render();
+	}
+	this.startConnectionLoading = function() {
+		let increment = 0;
+		function drawLoadingDot(x, y, draw) {
 		}
 	}
 
 	// PROCESS
 	this.start = function(option) {
-		logo.outline('green');
+		// logo.outline('green');
 		menu.outline('magenta');
 		this.drawLogo();
 		this.drawMenu(option);

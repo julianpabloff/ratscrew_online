@@ -177,6 +177,9 @@ const Controller = function() {
 			return 'connect';
 		}
 	}
+	this.connecting = function() {
+		if (this.esc) return 'cancel';
+	}
 	this.handleScreen = function() {
 		// if (screen == 'menu') return this.handleMenu();
 		return this[this.screen]();
