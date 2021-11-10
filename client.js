@@ -108,7 +108,7 @@ socket.on('timeout', () => {
 
 const keypress = require('keypress');
 const controller = new (require('./js/controller.js').Controller);
-const display = new(require('./js/display/new_display.js'));
+const display = new(require('./js/display/display.js'));
 
 async function updateMenu(command) {
 	if (display.waiting) return;

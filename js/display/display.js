@@ -1,7 +1,7 @@
 const BufferManager = require('./buffer.js');
-const NewMenuDisplay = require('./new_menu_display.js');
+const MenuDisplay = require('./menu_display.js');
 
-const NewDisplay = function() {
+const Display = function() {
 	const stdout = process.stdout;
 	this.draw = function(string, x, y) {
 		stdout.cursorTo(x, y);
@@ -46,7 +46,7 @@ const NewDisplay = function() {
 	}
 
 	// Screens
-	this.menu = new NewMenuDisplay(this);
+	this.menu = new MenuDisplay(this);
 	this.update = function(screen, type, data) {
 		this[screen][type](data);
 	}
@@ -176,4 +176,4 @@ const NewDisplay = function() {
 	this.wait = async miliseconds => new Promise(resolve => waitTimeout = setTimeout(resolve, miliseconds));
 }
 
-module.exports = NewDisplay;
+module.exports = Display;

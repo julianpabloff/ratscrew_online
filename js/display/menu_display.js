@@ -1,4 +1,4 @@
-const NewMenuDispaly = function(d) {
+const MenuDisplay = function(d) {
 	const logoStrings = [
 		'   ____________ ___________ ____    ____ ___________ ___________ ___________ ___________ ____________',
 		' /\\     ______\\\\    ______\\\\   \\  /\\   \\\\    ___   \\\\____   ___\\\\____   ___\\\\    ___   \\\\    ____   \\',
@@ -266,4 +266,4 @@ const NewMenuDispaly = function(d) {
 	}
 }
 
-module.exports = NewMenuDispaly;
+module.exports = MenuDisplay;
