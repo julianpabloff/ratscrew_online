@@ -68,8 +68,11 @@ socket.on('serverPing', () => {
 socket.on('playerPings', connectionData => {
 	lobby.forEach(player => {
 		const playerConnectionData = connectionData[player.id];
-		player.ping = playerConnectionData.ping;
-		player.connected = playerConnectionData.connected;
+		if (playerConnectionData == undefined) lobby.delete(player.id);
+		else {
+			player.ping = playerConnectionData.ping;
+			player.connected = playerConnectionData.connected;
+		}
 	});
 	if (controller.screen == 'lobby')
 		display.menu.drawLobby(lobby);
@@ -88,10 +91,13 @@ socket.on('lobbyEvent', event => {
 		case 'enter':
 			player.you = false;
 			lobby.set(player.id, player);
+			break;
 		case 'leave':
 			lobby.delete(player.id);
+			break;
 		case 'disconnect':
 			lobby.get(player.id).connected = player.connected;
+			break;
 	}
 	display.menu.drawLobby(lobby);
 });

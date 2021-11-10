@@ -30,8 +30,8 @@ const MenuDisplay = function(d) {
 
 	// BUFFERS
 	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight);
-	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15);
-	const lobby = d.buffer.new(lobbyX, optionsY - 1, logoEndX - lobbyX, 15);
+	const menu = d.buffer.new(logoX - 2, optionsY, 35, 12);
+	const lobby = d.buffer.new(lobbyX, optionsY - 1, logoEndX - lobbyX, 13);
 	menu.transparent = false;
 	const menuAnimation = d.buffer.new(logoX - 2, optionsY, 35, 15, 1);
 
@@ -206,6 +206,7 @@ const MenuDisplay = function(d) {
 			menu.load();
 			if (connection) {
 				menu.draw('  you connected breh', 0, 6, 'white');
+				menu.save();
 			}
 			menu.render();
 		}
@@ -238,6 +239,7 @@ const MenuDisplay = function(d) {
 				lobby.draw(pingString, lobby.end - pingString.length, y + 1);
 			}
 			lobby.draw(divider, 0, y + 2, 'magenta');
+			i++;
 		});
 		lobby.render();
 	}
@@ -246,8 +248,8 @@ const MenuDisplay = function(d) {
 	// PROCESS
 	this.start = function(option) {
 		// logo.outline('green');
-		menu.outline('magenta');
-		lobby.outline('blue');
+		// menu.outline('magenta');
+		// lobby.outline('blue');
 		this.drawLogo();
 		this.drawMenu(option);
 	}

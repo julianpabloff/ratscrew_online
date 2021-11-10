@@ -76,7 +76,7 @@ net.createServer((socket) => {
 	});
 
 	let pinging = false;
-	async function getPing() {
+	socket.getPing = async function(sendOutPing = true) {
 		// This is to make sure players are connected
 		// and also to send out everyone's ping for the lobby screen
 		const player = players.get(socket.id);
@@ -88,14 +88,19 @@ net.createServer((socket) => {
 			const end = Date.now() + Math.floor(Math.random() * 200);
 			pinging = false;
 			player.ping = Math.floor((end - start) / 2);
+			player.connected = true;
 			console.log(player.name + ' has ping: ' + player.ping);
-			socket.sendEvent('playerPings', getPlayerPings());
+			if (sendOutPing) socket.sendEvent('playerPings', getPlayerPings());
+			return Promise.resolve();
 		} else {
+			player.connected = false;
 			console.log(player.name + ' not responding');
+			return Promise.reject('couldn\'t get ping');
 		}
-		player.connected = !pinging;
 	}
-	const pingInterval = setInterval(getPing, 2500);
+	const pingInterval = setInterval(() => {
+		socket.getPing().catch(() => console.log('bleh'));
+	}, 2500);
 
 }).listen(port, host);
 
@@ -113,12 +118,14 @@ function getLobbyInfo() {
 	return playerArray;
 }
 function sendLobbyEvent(type, id) {
-	players.forEach(player => {
-		if (player.connected && player.id != id) {
+	players.forEach(async player => {
+		const affectedPlayer = players.get(id);
+		if (player.id != id) {
 			const socket = sockets.get(player.id);
-			const affectedPlayer = players.get(id);
-			const json = {type: type, player: affectedPlayer};
-			socket.sendEvent('lobbyEvent', json);
+			await socket.getPing(false).then(() => {
+				const json = {type: type, player: affectedPlayer};
+				socket.sendEvent('lobbyEvent', json);
+			}, () => {});
 		}
 	});
 }
