@@ -43,7 +43,7 @@ const Controller = function() {
 	this.prevMenuOption = 0;
 	// this.currentMenu = 'main';
 	// this.menus = ['local', 'online', 'settings'];
-	this.menu = function() {
+	this.menuUpdate = function() {
 		const command = {};
 		this.prevMenuOption = this.menuOption;
 		if (this.up || this.down) {
@@ -62,127 +62,132 @@ const Controller = function() {
 	}
 
 	// this.onlineStage = 0;
-	this.onlineOption = 0;
-	this.onlineBuffer = [[],[]];
-	this.cursorIndex = 0;
-	this.cursor = { index: 0, selected: false };
-	this.allFieldsFilled = false;
-	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
-	this.resetCursorIndex = function(option) {
-		this.cursor.index = this.onlineBuffer[option].length;
+	this.online = {
+		option: 0,
+		buffer: [[],[]],
+		cursorIndex: 0,
+		selectAll: false,
+		filled: false
+	};
+	let lastOnlineOptionsIndex = this.online.buffer.length - 1; // Include cycling through the connect button
+	this.resetForm = function() {
+		this.online.cursorIndex = this.online.buffer[0].length;
+		this.online.option = 0;
 	}
-	this.online = function() {
+	this.onlineUpdate = function() {
 		if (this.esc) return 'quit';
 		if (this.up || this.down || this.tab) {
-			this.onlineOption = cycle(this.onlineOption, lastOnlineOptionsIndex, !this.up);
-			this.cursor.bufferIndex = this.onlineOption;
-			if (this.onlineOption < this.onlineBuffer.length)
-				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
-			this.cursor.selected = false;
+			this.online.option = cycle(this.online.option, lastOnlineOptionsIndex, !this.up);
+			if (this.online.option < this.online.buffer.length)
+				this.online.cursorIndex = this.online.buffer[this.online.option].length;
+			this.online.selectAll = false;
 			return 'update';
-		} else if (this.onlineOption < this.onlineBuffer.length) {
-			let charArray = this.onlineBuffer[this.onlineOption];
+		} else if (this.online.option < this.online.buffer.length) {
+			let charArray = this.online.buffer[this.online.option];
 			let textChange = false;
 			if (this.alphaNum || this.space) {
 				const char = this.space ? ' ' : this.alphaNum;
-				if (!this.cursor.selected) {
-					charArray.splice(this.cursor.index, 0, char);
-					this.cursor.index++;
+				if (!this.online.selectAll) {
+					if (charArray.length < 25) {
+						charArray.splice(this.online.cursorIndex, 0, char);
+						this.online.cursorIndex++;
+					}
 				} else {
-					this.onlineBuffer[this.onlineOption] = [char];
-					this.cursor.index = 1;
-					this.cursor.selected = false;
+					this.online.buffer[this.online.option] = [char];
+					this.online.cursorIndex = 1;
+					this.online.selectAll = false;
 				}
 				textChange = true;
 			} else if (this.backspace || this.delete) {
 				if (charArray.length > 0) {
-					if (this.cursor.selected) {
-						this.onlineBuffer[this.onlineOption] = [];
-						this.cursor.index = 0;
-						this.cursor.selected = false;
+					if (this.online.selectAll) {
+						this.online.buffer[this.online.option] = [];
+						this.online.cursorIndex = 0;
+						this.online.selectAll = false;
 					} else if (this.backspace) {
-						if (this.cursor.index > 0) {
-							charArray.splice(this.cursor.index - 1, 1);
-							this.cursor.index--;
+						if (this.online.cursorIndex > 0) {
+							charArray.splice(this.online.cursorIndex - 1, 1);
+							this.online.cursorIndex--;
 						}
 					} else if (this.delete) {
-						if (this.cursor.index < charArray.length) {
-							charArray.splice(this.cursor.index, 1);
+						if (this.online.cursorIndex < charArray.length) {
+							charArray.splice(this.online.cursorIndex, 1);
 							textChange = true;
 						}
 					}
 					textChange = true;
 				}
 			} else if (this.left) {
-				if (this.cursor.index > 0) {
-					this.cursor.index--;
-					this.cursor.selected = false;
-					return 'update';
-				}
+				if (this.online.cursorIndex > 0)
+					this.online.cursorIndex--;
+				this.online.selectAll = false;
+				return 'update';
 			} else if (this.right) {
-				if (this.cursor.index < this.onlineBuffer[this.onlineOption].length)
-					this.cursor.index++;
-				this.cursor.selected = false;
+				if (this.online.cursorIndex < this.online.buffer[this.online.option].length)
+					this.online.cursorIndex++;
+				this.online.selectAll = false;
 				return 'update';
 			} else if (this.home) {
-				this.cursor.index = 0;
-				this.cursor.selected = false;
+				this.online.cursorIndex = 0;
+				this.online.selectAll = false;
 				return 'update';
 			} else if (this.end) {
-				this.cursor.index = this.onlineBuffer[this.onlineOption].length;
-				this.cursor.selected = false;
+				this.online.cursorIndex = this.online.buffer[this.online.option].length;
+				this.online.selectAll = false;
 				return 'update';
 			} else if (this.selectAll && charArray.length > 0) {
-				this.cursor.selected = true;
+				this.online.selectAll = true;
 				return 'update';
-			} else if (this.copy && this.cursor.selected) {
+			} else if (this.copy && this.online.selectAll) {
 				const input = charArray.join('');
 				clipboard.write(input);
-				this.cursor.selected = false;
+				this.online.selectAll = false;
 				return 'update';
 			} else if (this.paste) {
 				const text = clipboard.read();
 				if (text != null) {
 					const clipCharArray = [];
 					for (const char of text) clipCharArray.push(char);
-					if (this.cursor.selected) {
-						this.onlineBuffer[this.onlineOption] = clipCharArray;
-						this.cursor.index = clipCharArray.length;
-						this.cursor.selected = false;
+					if (this.online.selectAll && clipCharArray.length <= 25) {
+						this.online.buffer[this.online.option] = clipCharArray;
+						this.online.cursorIndex = clipCharArray.length;
+						this.online.selectAll = false;
 					}
-					else {
-						charArray.splice(this.cursor.index, 0, ...clipCharArray);
-						this.cursor.index += clipCharArray.length;
+					else if (charArray.length + clipCharArray.length <= 25) {
+						charArray.splice(this.online.cursorIndex, 0, ...clipCharArray);
+						this.online.cursorIndex += clipCharArray.length;
 					}
 					textChange = true;
 				}
 			}
 			if (textChange) {
-				const temp = this.allFieldsFilled;
-				this.allFieldsFilled = true;
-				for (let textArray of this.onlineBuffer) {
+				const temp = this.online.filled;
+				this.online.filled = true;
+				for (let textArray of this.online.buffer) {
 					if (textArray.length == 0) {
-						this.allFieldsFilled = false;
+						this.online.filled = false;
 						break;
 					}
 				}
-				const input = this.onlineBuffer[0].join('');
+				const input = this.online.buffer[0].join('');
 				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
-				if (input != match) this.allFieldsFilled = false;
-				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
-				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
-				return temp != this.allFieldsFilled ? 'toggleConnect' : 'update';
+				if (input != match) this.online.filled = false;
+				if (this.online.filled) lastOnlineOptionsIndex = this.online.buffer.length;
+				else lastOnlineOptionsIndex = this.online.buffer.length - 1;
+				return temp != this.online.filled ? 'toggleConnect' : 'update';
 			}
-		} else if (this.enter) {
-			return 'connect';
-		}
+		} else if (this.enter) return 'connect';
 	}
-	this.connecting = function() {
+	this.connectingUpdate = function() {
 		if (this.esc) return 'cancel';
+	}
+	this.lobbyUpdate = function() {
+		if (this.esc) return 'leave';
+		else if (this.enter) return 'toggleReady';
 	}
 	this.handleScreen = function() {
 		// if (screen == 'menu') return this.handleMenu();
-		return this[this.screen]();
+		return this[this.screen + 'Update']();
 	}
 
 	this.addPlayerControls = function(players) {

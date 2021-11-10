@@ -97,6 +97,8 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.y = y;
 	this.width = width;
 	this.height = height;
+	this.end = width - 1;
+	this.bottom = height - 1;
 	this.size = width * height;
 	this.empty = true;
 	this.outlined = false;
@@ -123,7 +125,9 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 
 	// Writing to buffer
 	let cursorIndex = 0;
-	this.print = function(string, index) {
+	this.print = function(string, index, fg = false, bg = false) {
+		if (fg) manager.setFg(fg);
+		if (bg) manager.setBg(bg);
 		for (let i = 0; i < string.length; i++) {
 			this.current[index + i] = string.charCodeAt(i);
 			this.colors[index + i] = manager.color;
@@ -134,12 +138,13 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.cursorTo = function(x, y) {
 		cursorIndex = this.coordinateIndex(x, y);
 	}
-	this.write = function(string) {
-		this.print(string, cursorIndex);
+	this.write = function(string, fg = false, bg = false) {
+		this.print(string, cursorIndex, fg, bg);
 	}
-	this.draw = function(string, x, y) {
+	this.draw = function(string, x, y, fg = false, bg = false) {
 		const index = this.coordinateIndex(x, y);
-		this.print(string, index);
+		this.print(string, index, fg, bg);
+		return this;
 	}
 	this.erase = function(x, y, count = 1) {
 		const index = this.coordinateIndex(x, y);
@@ -220,10 +225,10 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 			bg: colorLookup[colorCode & 0x0F]
 		};
 	}
-	this.load = function() {
+	this.load = function(render = false) {
 		this.current = new Uint16Array(savedBuffer);
 		this.colors = new Uint8Array(savedColors);
-		this.render();
+		if (render) this.render();
 	}
 
 	this.clear = function() {
