@@ -1,8 +1,10 @@
+const clipboard = require('native-clip');
+
 const Controller = function() {
 	this.update = function(key, shift = false, ctrl = false) {
 		this.esc = this.left = this.right = this.up = this.down = this.tab = this.enter = false;
-		this.space = this.backspace = this.alphaNum = false;
-		this.selectAll = this.copy = this.paste = false;
+		this.space = this.backspace = this.delete = this.alphaNum = false;
+		this.selectAll = this.copy = this.paste = this.home = this.end = false;
 		switch (key) {
 			case 'escape' : this.esc = true; break;
 			case 'left' : this.left = true; break;
@@ -13,14 +15,17 @@ const Controller = function() {
 			case 'return' : this.enter = true; break;
 			case 'space' : this.space = true; break;
 			case 'backspace' : this.backspace = true; break;
+			case 'delete' : this.delete = true; break;
+			case 'home' : this.home = true; break;
+			case 'end' : this.end = true; break;
 		}
 		if (key != undefined && key.length == 1) {
 			let charCode = key.charCodeAt(0);
 			if (ctrl)
 				switch (key) {
-					case 'a' : this.selectAll = this.onlineOption; return true;
-					case 'c' : this.copy = this.onlineOption; return true;
-					case 'v' : this.paste = this.onlineOption; return true;
+					case 'a' : this.selectAll = true; return true;
+					case 'c' : this.copy = true; return true;
+					case 'v' : this.paste = true; return true;
 					default: return false;
 				}
 			else {
@@ -33,62 +38,156 @@ const Controller = function() {
 	}
 	this.update();
 
+	this.screen = 'menu';
 	this.menuOption = 0;
 	this.prevMenuOption = 0;
-	this.currentMenu = 'main';
-	this.menus = ['local', 'online', 'settings'];
-	this.handleMenu = function() {
+	// this.currentMenu = 'main';
+	// this.menus = ['local', 'online', 'settings'];
+	this.menuUpdate = function() {
+		const command = {};
 		this.prevMenuOption = this.menuOption;
-		if (this.up) {
-			if (this.menuOption == 0) this.menuOption = 2;
-			else this.menuOption--;
-		} else if (this.down) {
-			if (this.menuOption == 2) this.menuOption = 0;
-			else this.menuOption++;
+		if (this.up || this.down) {
+			this.menuOption = cycle(this.menuOption, 2, this.down);
+			return 'update';
 		}
+		if (this.enter) return 'enter';
+		if (this.esc) return 'quit';
+	}
+	function cycle(number, max, up = true) {
+		const end = up * max;
+		const start = max - end;
+		if (number == end) number = start;
+		else number = number - (2 * !up) + 1;
+		return number;
 	}
 
-	this.onlineStage = 0;
-	this.onlineBuffer = [[],[]];
-	this.onlineOption = 0;
-	this.allFieldsFilled = false;
-	let lastOnlineOptionsIndex = this.onlineBuffer.length - 1; // Include cycling through the connect button
-	this.handleOnline = function() {
-		if (this.onlineStage == 0) {
-			this.textChange = null;
-			if (this.onlineOption < this.onlineBuffer.length) {
-				const charArray = this.onlineBuffer[this.onlineOption];
-				if (this.alphaNum) {
-					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: this.alphaNum};
-					charArray.push(this.alphaNum);
-				} else if (this.space) {
-					this.textChange = {adding: true, index: this.onlineOption, stringIndex: charArray.length, char: ' '};
-					charArray.push(' ');
-				}else if (this.backspace && charArray.length > 0) {
-					this.textChange = {adding: false, index: this.onlineOption, stringIndex: charArray.length - 1, char: ' '};
-					charArray.pop();
+	// this.onlineStage = 0;
+	this.online = {
+		option: 0,
+		buffer: [[],[]],
+		cursorIndex: 0,
+		selectAll: false,
+		filled: false
+	};
+	let lastOnlineOptionsIndex = this.online.buffer.length - 1; // Include cycling through the connect button
+	this.resetForm = function() {
+		this.online.cursorIndex = this.online.buffer[0].length;
+		this.online.option = 0;
+	}
+	this.onlineUpdate = function() {
+		if (this.esc) return 'quit';
+		if (this.up || this.down || this.tab) {
+			this.online.option = cycle(this.online.option, lastOnlineOptionsIndex, !this.up);
+			if (this.online.option < this.online.buffer.length)
+				this.online.cursorIndex = this.online.buffer[this.online.option].length;
+			this.online.selectAll = false;
+			return 'update';
+		} else if (this.online.option < this.online.buffer.length) {
+			let charArray = this.online.buffer[this.online.option];
+			let textChange = false;
+			if (this.alphaNum || this.space) {
+				const char = this.space ? ' ' : this.alphaNum;
+				if (!this.online.selectAll) {
+					if (charArray.length < 25) {
+						charArray.splice(this.online.cursorIndex, 0, char);
+						this.online.cursorIndex++;
+					}
+				} else {
+					this.online.buffer[this.online.option] = [char];
+					this.online.cursorIndex = 1;
+					this.online.selectAll = false;
 				}
-				this.allFieldsFilled = true;
-				for (let textArray of this.onlineBuffer) {
+				textChange = true;
+			} else if (this.backspace || this.delete) {
+				if (charArray.length > 0) {
+					if (this.online.selectAll) {
+						this.online.buffer[this.online.option] = [];
+						this.online.cursorIndex = 0;
+						this.online.selectAll = false;
+					} else if (this.backspace) {
+						if (this.online.cursorIndex > 0) {
+							charArray.splice(this.online.cursorIndex - 1, 1);
+							this.online.cursorIndex--;
+						}
+					} else if (this.delete) {
+						if (this.online.cursorIndex < charArray.length) {
+							charArray.splice(this.online.cursorIndex, 1);
+							textChange = true;
+						}
+					}
+					textChange = true;
+				}
+			} else if (this.left) {
+				if (this.online.cursorIndex > 0)
+					this.online.cursorIndex--;
+				this.online.selectAll = false;
+				return 'update';
+			} else if (this.right) {
+				if (this.online.cursorIndex < this.online.buffer[this.online.option].length)
+					this.online.cursorIndex++;
+				this.online.selectAll = false;
+				return 'update';
+			} else if (this.home) {
+				this.online.cursorIndex = 0;
+				this.online.selectAll = false;
+				return 'update';
+			} else if (this.end) {
+				this.online.cursorIndex = this.online.buffer[this.online.option].length;
+				this.online.selectAll = false;
+				return 'update';
+			} else if (this.selectAll && charArray.length > 0) {
+				this.online.selectAll = true;
+				return 'update';
+			} else if (this.copy && this.online.selectAll) {
+				const input = charArray.join('');
+				clipboard.write(input);
+				this.online.selectAll = false;
+				return 'update';
+			} else if (this.paste) {
+				const text = clipboard.read();
+				if (text != null) {
+					const clipCharArray = [];
+					for (const char of text) clipCharArray.push(char);
+					if (this.online.selectAll && clipCharArray.length <= 25) {
+						this.online.buffer[this.online.option] = clipCharArray;
+						this.online.cursorIndex = clipCharArray.length;
+						this.online.selectAll = false;
+					}
+					else if (charArray.length + clipCharArray.length <= 25) {
+						charArray.splice(this.online.cursorIndex, 0, ...clipCharArray);
+						this.online.cursorIndex += clipCharArray.length;
+					}
+					textChange = true;
+				}
+			}
+			if (textChange) {
+				const temp = this.online.filled;
+				this.online.filled = true;
+				for (let textArray of this.online.buffer) {
 					if (textArray.length == 0) {
-						this.allFieldsFilled = false;
+						this.online.filled = false;
 						break;
 					}
 				}
-				const input = this.onlineBuffer[0].join('');
+				const input = this.online.buffer[0].join('');
 				const match = [...input.matchAll(/[^:]+:\d+/g)][0];
-				if (input != match) this.allFieldsFilled = false;
-				if (this.allFieldsFilled) lastOnlineOptionsIndex = this.onlineBuffer.length;
-				else lastOnlineOptionsIndex = this.onlineBuffer.length - 1;
+				if (input != match) this.online.filled = false;
+				if (this.online.filled) lastOnlineOptionsIndex = this.online.buffer.length;
+				else lastOnlineOptionsIndex = this.online.buffer.length - 1;
+				return temp != this.online.filled ? 'toggleConnect' : 'update';
 			}
-			if (this.up)
-				if (this.onlineOption == 0) this.onlineOption = lastOnlineOptionsIndex;
-				else this.onlineOption--;
-			else if (this.down || this.tab)
-				if (this.onlineOption == lastOnlineOptionsIndex) this.onlineOption = 0;
-				else this.onlineOption++;
-		} else if (this.onlineStage == 1) {
-		}
+		} else if (this.enter) return 'connect';
+	}
+	this.connectingUpdate = function() {
+		if (this.esc) return 'cancel';
+	}
+	this.lobbyUpdate = function() {
+		if (this.esc) return 'leave';
+		else if (this.enter) return 'toggleReady';
+	}
+	this.handleScreen = function() {
+		// if (screen == 'menu') return this.handleMenu();
+		return this[this.screen + 'Update']();
 	}
 
 	this.addPlayerControls = function(players) {
