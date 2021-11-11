@@ -40,7 +40,6 @@ let playerName;
 let pendingConnections = 0;
 let connectionCancelled = false;
 let connected = false;
-let ready = false;
 const hash = crypto.randomBytes(32).toString('hex');
 socket.on('connect', () => {
 	pendingConnections--;
@@ -93,14 +92,9 @@ socket.on('lobbyEvent', event => {
 			player.you = false;
 			lobby.set(player.id, player);
 			break;
-		case 'ready':
-			lobby.get(player.id).ready = player.ready;
-		case 'disconnect':
-			lobby.get(player.id).connected = player.connected;
-			break;
-		case 'leave':
-			lobby.delete(player.id);
-			break;
+		case 'ready': lobby.get(player.id).ready = player.ready; break;
+		case 'disconnect': lobby.get(player.id).connected = player.connected; break;
+		case 'leave': lobby.delete(player.id); break;
 	}
 	display.menu.drawLobby(lobby);
 });
