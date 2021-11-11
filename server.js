@@ -28,7 +28,7 @@ net.createServer((socket) => {
 	}
 
 	const connectionTimestamp = Date.now();
-	socket.on('connection', (playerData) => {
+	socket.on('connection', playerData => {
 		const hash = playerData.hash;
 		socket.id = hash;
 		sockets.set(hash, socket);
@@ -52,15 +52,18 @@ net.createServer((socket) => {
 		// Pause the game or lobby
 		// Kick player after inactivity
 	});
-	*/
-
+	socket.on('leave', () => {
+		socket.sendEvent('leave');
+	});
 	socket.on('clientPing', () => { 
 		socket.sendEvent('clientPing');
 		console.log('pong');
 	});
+	*/
 
-	socket.on('leave', () => {
-		socket.sendEvent('leave');
+	socket.on('ready', ready => {
+		players.get(socket.id).ready = ready;
+		sendLobbyEvent('ready', socket.id);
 	});
 
 	socket.on('close', () => {
@@ -76,6 +79,7 @@ net.createServer((socket) => {
 	});
 
 	let pinging = false;
+	let connected = true;
 	socket.getPing = async function(sendOutPing = true) {
 		// This is to make sure players are connected
 		// and also to send out everyone's ping for the lobby screen
@@ -87,20 +91,21 @@ net.createServer((socket) => {
 			// const end = Date.now();
 			const end = Date.now() + Math.floor(Math.random() * 200);
 			pinging = false;
+			connected = true;
 			player.ping = Math.floor((end - start) / 2);
 			player.connected = true;
-			console.log(player.name + ' has ping: ' + player.ping);
 			if (sendOutPing) socket.sendEvent('playerPings', getPlayerPings());
 			return Promise.resolve();
 		} else {
 			player.connected = false;
-			console.log(player.name + ' not responding');
+			if (connected) sendLobbyEvent('disconnect', socket.id);
+			connected = false;
 			return Promise.reject('couldn\'t get ping');
 		}
 	}
 	const pingInterval = setInterval(() => {
-		socket.getPing().catch(() => console.log('bleh'));
-	}, 2500);
+		socket.getPing().catch(() => {});
+	}, 2000);
 
 }).listen(port, host);
 
@@ -118,11 +123,11 @@ function getLobbyInfo() {
 	return playerArray;
 }
 function sendLobbyEvent(type, id) {
-	players.forEach(async player => {
+	players.forEach(player => {
 		const affectedPlayer = players.get(id);
 		if (player.id != id) {
 			const socket = sockets.get(player.id);
-			await socket.getPing(false).then(() => {
+			socket.getPing(false).then(() => {
 				const json = {type: type, player: affectedPlayer};
 				socket.sendEvent('lobbyEvent', json);
 			}, () => {});

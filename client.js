@@ -40,6 +40,7 @@ let playerName;
 let pendingConnections = 0;
 let connectionCancelled = false;
 let connected = false;
+let ready = false;
 const hash = crypto.randomBytes(32).toString('hex');
 socket.on('connect', () => {
 	pendingConnections--;
@@ -54,7 +55,7 @@ socket.on('connect', () => {
 		request('connection', playerData).then(lobbyData => {
 			connected = true;
 			processLobbyData(lobbyData);
-			display.menu.stopConnectionLoading(true, true);
+			display.menu.stopConnectionLoading(false, true);
 			display.menu.drawLobby(lobby);
 			controller.screen = 'lobby';
 		});
@@ -92,11 +93,13 @@ socket.on('lobbyEvent', event => {
 			player.you = false;
 			lobby.set(player.id, player);
 			break;
-		case 'leave':
-			lobby.delete(player.id);
-			break;
+		case 'ready':
+			lobby.get(player.id).ready = player.ready;
 		case 'disconnect':
 			lobby.get(player.id).connected = player.connected;
+			break;
+		case 'leave':
+			lobby.delete(player.id);
 			break;
 	}
 	display.menu.drawLobby(lobby);
@@ -106,6 +109,7 @@ socket.setTimeout(3000);
 socket.on('timeout', () => {
 	if (connected) {
 		process.stdout.cursorTo(1, 20);
+		menu.render();
 		console.log('timed out');
 		lobby.get(hash).connected = false;
 		connected = false;
@@ -170,12 +174,21 @@ function updateConnecting(command) {
 	}
 }
 function updateLobby(command) {
-	if (command == 'leave') {
-		lobby.clear();
-		socket.destroy();
-		controller.screen = 'online';
-		display.menu.clearLobby();
-		display.menu.drawOnline(controller.online);
+	const you = lobby.get(hash);
+	const prevReady = you.ready;
+	if (command == 'escape') {
+		if (you.ready) you.ready = false;
+		else {
+			lobby.clear();
+			socket.destroy();
+			controller.screen = 'online';
+			display.menu.clearLobby();
+			display.menu.drawOnline(controller.online);
+		}
+	} else if (command == 'ready' && !you.ready) you.ready = true;
+	if (you.ready != prevReady) {
+		sendEvent('ready', you.ready);
+		display.menu.drawLobby(lobby);
 	}
 }
 

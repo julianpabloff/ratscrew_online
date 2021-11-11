@@ -143,6 +143,7 @@ const MenuDisplay = function(d) {
 			} else {
 				menu.draw(value, 2, y, 'white', 'reset');
 				menu.cursorTo(2, y + 1);
+				d.buffer.setFg('cyan');
 				if (inputText.length > 0)
 					inputText.forEach(char => menu.write(char));
 				else menu.write('...');
@@ -203,12 +204,17 @@ const MenuDisplay = function(d) {
 		d.clearLoadingDots(menu, 2, 6);
 		for (const timeout of connectionTimeouts) clearTimeout(timeout);
 		if (render) {
-			menu.load();
-			if (connection) {
-				menu.draw('  you connected breh', 0, 6, 'white');
-				menu.save();
-			}
+			// menu.load();
+			// if (connection) {
+			// 	menu.draw('  you connected breh', 0, 6, 'white');
+			// 	menu.save();
+			// }
 			menu.render();
+		}
+		if (connection) {
+			menu.load();
+			menu.erase(0, 6, 2 + connect.length);
+			menu.save();
 		}
 	}
 	this.showConnectionError = function(message) {
@@ -224,7 +230,24 @@ const MenuDisplay = function(d) {
 		let i = 0;
 		lobbyData.forEach(player => {
 			const y = 3 * i + 1;
-			if (player.you) lobby.draw(player.name + ' (YOU)', 0, y, 'cyan');
+			if (player.you) {
+				menu.load();
+				menu.draw('Press [', 2, 6, 'white');
+				if (player.ready) {
+					menu.write('esc', 'cyan').write(']', 'white');
+					menu.draw('to ', 2, 7).write('CANCEL', 'magenta');
+					menu.draw('Waiting for', 2, 9, 'red');
+					menu.draw('other players', 2, 10);
+				} else {
+					menu.write('enter', 'cyan').write(']', 'white');
+					menu.draw('when ', 2, 7).write('READY', 'magenta');
+					menu.draw('Press [', 2, 9, 'white');
+					menu.write('esc', 'cyan').write(']', 'white');
+					menu.draw('to ', 2, 10).write('LEAVE', 'magenta');
+				}
+				menu.render();
+				lobby.draw(player.name + ' (YOU)', 0, y, 'cyan');
+			}
 			else lobby.draw(player.name, 0, y, 'white');
 			if (player.ready) lobby.draw('READY', 0, y + 1, 'green');
 			else lobby.draw('NOT READY', 0, y + 1, 'red');
@@ -237,6 +260,10 @@ const MenuDisplay = function(d) {
 				lobby.draw('Ping:', lobby.end - 12, y + 1);
 				const pingString = ping.toString() + 'ms';
 				lobby.draw(pingString, lobby.end - pingString.length, y + 1);
+			} else {
+				d.buffer.setFg('white');
+				lobby.draw('disconnected', lobby.end - 12, y);
+				lobby.draw('Ping:   ----', lobby.end - 12, y + 1);
 			}
 			lobby.draw(divider, 0, y + 2, 'magenta');
 			i++;

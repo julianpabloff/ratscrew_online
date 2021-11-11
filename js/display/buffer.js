@@ -140,6 +140,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	}
 	this.write = function(string, fg = false, bg = false) {
 		this.print(string, cursorIndex, fg, bg);
+		return this;
 	}
 	this.draw = function(string, x, y, fg = false, bg = false) {
 		const index = this.coordinateIndex(x, y);

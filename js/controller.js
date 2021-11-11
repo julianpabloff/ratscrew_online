@@ -182,8 +182,8 @@ const Controller = function() {
 		if (this.esc) return 'cancel';
 	}
 	this.lobbyUpdate = function() {
-		if (this.esc) return 'leave';
-		else if (this.enter) return 'toggleReady';
+		if (this.esc) return 'escape';
+		else if (this.enter) return 'ready';
 	}
 	this.handleScreen = function() {
 		// if (screen == 'menu') return this.handleMenu();
