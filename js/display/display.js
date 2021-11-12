@@ -123,13 +123,7 @@ const Display = function() {
 		this.animating = true;
 		animations.push(moveRight);
 	}
-	function coordinateSeed(x, y) {
-		return y + (x << 8);
-	}
-	function seedCoordinates(seed) {
-		return {x: seed >> 8, y: seed & 0xFF00}
-	}
-	this.dotObjects = new Map();
+	const coordinateSeed = (x, y) => y + (x << 8);
 	this.drawLoadingDot = function(buffer, x, y, draw, color = 'red') {
 		this.buffer.setFg(color);
 		const char = draw ? '.' : ' ';
@@ -137,18 +131,19 @@ const Display = function() {
 		buffer.paint();
 	}
 	const dotTimeouts = [];
+	this.dotObjects = new Map();
 	this.loadingDots = function(buffer, count, x, y, interval = 300) {
-		const loadingDots = new Uint8Array(count);
-		const seed = coordinateSeed(x, y);
-		this.dotObjects[seed] = { active: loadingDots, intervals: [] };
-		const dot = this.dotObjects[seed];
 		this.animating = true;
+		const seed = coordinateSeed(x, y);
+		const dotArray = new Uint8Array(count).fill(1);
+		this.dotObjects.set(seed, { active: dotArray, intervals: [] });
+		const dot = this.dotObjects.get(seed);
 		for (let i = 0; i < count; i++) {
 			dotTimeouts.push(setTimeout(() => {
 				this.drawLoadingDot(buffer, x + i, y, true);
 				dot.intervals.push(setInterval(() => {
-					this.drawLoadingDot(buffer, x + i, y, dot.active[i]);
 					dot.active[i] ^= 1;
+					this.drawLoadingDot(buffer, x + i, y, dot.active[i]);
 				}, interval * count));
 			}, interval * i));
 		}
@@ -156,13 +151,18 @@ const Display = function() {
 	this.clearLoadingDots = function(buffer, x, y) {
 		this.animating = false;
 		for (const timeout of dotTimeouts) clearTimeout(timeout);
-		const dot = this.dotObjects[coordinateSeed(x, y)];
+		const seed = coordinateSeed(x, y);
+		const dot = this.dotObjects.get(seed);
 		if (dot) {
-			for (let i = 0; i < dot.intervals.length; i++) {
-				clearInterval(dot.intervals[i]);
-				if(dot.active[i]) this.drawLoadingDot(buffer, x + i, y, false);
+			let i = 0;
+			for (let interval of dot.intervals) {
+				clearInterval(interval);
+				// if(dot.active[i]) this.drawLoadingDot(buffer, x + i, y, false);
+				if(dot.active[i]) buffer.erase(x + i, y);
+				i++;
 			}
-			delete this.dotObjects[coordinateSeed(x, y)];
+			buffer.paint();
+			this.dotObjects.delete(seed);
 		}
 	}
 	this.stopAnimating = function(buffer) {
@@ -174,6 +174,10 @@ const Display = function() {
 	}
 	let waitTimeout;
 	this.wait = async miliseconds => new Promise(resolve => waitTimeout = setTimeout(resolve, miliseconds));
+	this.debug = function(item) {
+		process.stdout.cursorTo(0,0);
+		console.log(item);
+	}
 }
 
 module.exports = Display;

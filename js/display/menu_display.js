@@ -30,7 +30,7 @@ const MenuDisplay = function(d) {
 
 	// BUFFERS
 	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight);
-	const menu = d.buffer.new(logoX - 2, optionsY, 35, 12);
+	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15);
 	const lobby = d.buffer.new(lobbyX, optionsY - 1, logoEndX - lobbyX, 13);
 	menu.transparent = false;
 	const menuAnimation = d.buffer.new(logoX - 2, optionsY, 35, 15, 1);
@@ -184,13 +184,12 @@ const MenuDisplay = function(d) {
 		menu.render();
 	}
 	const connectionTimeouts = [];
-	this.startConnectionLoading = async function() {
+	this.startConnectionLoading = function() {
 		d.waiting = true;
 		d.animateSelection(menu, connect, 2, 6);
-		// await d.wait(250);
 		connectionTimeouts.push(setTimeout(() => {
+			d.loadingDots(menu, 3, 2, 6);
 			d.waiting = false;
-			d.loadingDots(menu, 3, 2, 6)
 		}, 250));
 		connectionTimeouts.push(setTimeout(() => {
 			menu.draw('Connecting', 2, 8, 'red').paint();
@@ -204,16 +203,11 @@ const MenuDisplay = function(d) {
 		d.clearLoadingDots(menu, 2, 6);
 		for (const timeout of connectionTimeouts) clearTimeout(timeout);
 		if (render) {
-			// menu.load();
-			// if (connection) {
-			// 	menu.draw('  you connected breh', 0, 6, 'white');
-			// 	menu.save();
-			// }
+			menu.load();
 			menu.render();
 		}
-		if (connection) {
-			menu.load();
-			menu.erase(0, 6, 2 + connect.length);
+		if (connection) { // Preserve just the server address
+			menu.loadArea(2, 0, 25, 2);
 			menu.save();
 		}
 	}
@@ -226,24 +220,25 @@ const MenuDisplay = function(d) {
 	// LOBBY
 	const divider = '─'.repeat(logoEndX - lobbyX);
 	this.drawLobby = function(lobbyData) {
+		menu.load(); // For server address
+		menu.draw(lobbyData.size.toString() + '/4', 2, 3, 'cyan');
+		menu.write(' players', 'white').draw('in lobby', 2, 4);
 		lobby.draw(divider, 0, 0, 'magenta');
 		let i = 0;
 		lobbyData.forEach(player => {
 			const y = 3 * i + 1;
 			if (player.you) {
-				menu.load();
-				menu.draw('Press [', 2, 6, 'white');
+				menu.draw('Press ', 2, 6, 'white');
 				if (player.ready) {
-					menu.write('esc', 'cyan').write(']', 'white');
-					menu.draw('to ', 2, 7).write('CANCEL', 'magenta');
-					menu.draw('Waiting for', 2, 9, 'red');
-					menu.draw('other players', 2, 10);
+					menu.write('esc', 'magenta');
+					menu.draw('to ', 2, 7, 'white').write('CANCEL', 'cyan');
+					menu.draw('Waiting for others', 2, 11, 'red');
 				} else {
-					menu.write('enter', 'cyan').write(']', 'white');
-					menu.draw('when ', 2, 7).write('READY', 'magenta');
-					menu.draw('Press [', 2, 9, 'white');
-					menu.write('esc', 'cyan').write(']', 'white');
-					menu.draw('to ', 2, 10).write('LEAVE', 'magenta');
+					menu.write('enter', 'magenta');
+					menu.draw('when ', 2, 7, 'white').write('READY', 'cyan');
+					menu.draw('Press ', 2, 9, 'white');
+					menu.write('esc', 'magenta');
+					menu.draw('to ', 2, 10, 'white').write('LEAVE', 'cyan');
 				}
 				menu.render();
 				lobby.draw(player.name + ' (YOU)', 0, y, 'cyan');
@@ -272,10 +267,21 @@ const MenuDisplay = function(d) {
 	}
 	this.clearLobby = () => lobby.clear();
 
+	this.startWaiting = function() {
+		d.loadingDots(menuAnimation, 3, 2, 9);
+		menu.load();
+		menu.draw('Waiting for others', 2, 11, 'red').render();
+	}
+	this.stopWaiting = function() {
+		d.clearLoadingDots(menuAnimation, 2, 9);
+		menu.clear();
+	}
+
 	// PROCESS
 	this.start = function(option) {
 		// logo.outline('green');
 		// menu.outline('magenta');
+		// menuAnimation.outline('yellow');
 		// lobby.outline('blue');
 		this.drawLogo();
 		this.drawMenu(option);

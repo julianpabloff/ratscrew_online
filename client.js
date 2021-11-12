@@ -28,6 +28,7 @@ socket.on('error', error => {
 			case 'ENOTFOUND' : message = 'Server not found'; break;
 			case 'ECONNREFUSED' : message = 'Connection refused'; break;
 			case 'ENOENT' : message = 'Invalid address'; break;
+			case 'ECONNRESET' : message = 'Server full'; break;
 			default: message = 'Connection error (' + error.code + ')'; break;
 		}
 		display.menu.stopConnectionLoading(false);
@@ -103,7 +104,6 @@ socket.setTimeout(3000);
 socket.on('timeout', () => {
 	if (connected) {
 		process.stdout.cursorTo(1, 20);
-		menu.render();
 		console.log('timed out');
 		lobby.get(hash).connected = false;
 		connected = false;
@@ -171,15 +171,20 @@ function updateLobby(command) {
 	const you = lobby.get(hash);
 	const prevReady = you.ready;
 	if (command == 'escape') {
-		if (you.ready) you.ready = false;
-		else {
+		if (you.ready) {
+			you.ready = false;
+			display.menu.stopWaiting();
+		} else {
 			lobby.clear();
 			socket.destroy();
 			controller.screen = 'online';
 			display.menu.clearLobby();
 			display.menu.drawOnline(controller.online);
 		}
-	} else if (command == 'ready' && !you.ready) you.ready = true;
+	} else if (command == 'ready' && !you.ready) {
+		you.ready = true;
+		display.menu.startWaiting();
+	}
 	if (you.ready != prevReady) {
 		sendEvent('ready', you.ready);
 		display.menu.drawLobby(lobby);

@@ -1,6 +1,5 @@
 const net = require('net');
 
-// const host = '127.0.0.1';
 const host = '192.168.0.106';
 const port = 6969;
 
@@ -8,7 +7,7 @@ const players = new Map();
 const sockets = new Map();
 const lobby = {};
 
-net.createServer((socket) => {
+const server = net.createServer((socket) => {
 	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
 	socket.on('data', (data) => {
 		let json = JSON.parse(data);
@@ -108,6 +107,7 @@ net.createServer((socket) => {
 	}, 2000);
 
 }).listen(port, host);
+server.maxConnections = 4;
 
 function getLobbyInfo() {
 	const playerArray = [];
