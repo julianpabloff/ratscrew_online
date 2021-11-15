@@ -109,7 +109,7 @@ const MenuDisplay = function(d) {
 			cursor.visible = !cursor.visible;
 			if (cursor.active) {
 				drawCursor();
-				menu.paint();
+				menu.paint(false);
 			}
 		}, 500);
 	}
@@ -186,29 +186,28 @@ const MenuDisplay = function(d) {
 	const connectionTimeouts = [];
 	this.startConnectionLoading = function() {
 		d.waiting = true;
+		menu.load();
 		d.animateSelection(menu, connect, 2, 6);
 		connectionTimeouts.push(setTimeout(() => {
 			d.loadingDots(menu, 3, 2, 6);
 			d.waiting = false;
 		}, 250));
 		connectionTimeouts.push(setTimeout(() => {
-			menu.draw('Connecting', 2, 8, 'red').paint();
+			menu.draw('Connecting', 2, 8, 'red').paint(false);
 		}, 400));
 		connectionTimeouts.push(setTimeout(() => {
-			menu.draw('Press ESC to cancel', 2, 8, 'red').paint();
+			menu.draw('Press ESC to cancel', 2, 8, 'red').paint(false);
 		}, 2200));
 	}
-	this.stopConnectionLoading = function(render = true, connection = false) {
+	this.stopConnectionLoading = function(type) {
 		d.waiting = false;
 		d.clearLoadingDots(menu, 2, 6);
 		for (const timeout of connectionTimeouts) clearTimeout(timeout);
-		if (render) {
-			menu.load();
-			menu.render();
-		}
-		if (connection) { // Preserve just the server address
-			menu.loadArea(2, 0, 25, 2);
-			menu.save();
+		switch(type) {
+			case 'connection': // Preserve just the server address
+				menu.loadArea(2, 0, 25, 2).save(); break;
+			case 'cancel': case 'error':
+				menu.load().render(); break;
 		}
 	}
 	this.showConnectionError = function(message) {
@@ -272,10 +271,7 @@ const MenuDisplay = function(d) {
 		menu.load();
 		menu.draw('Waiting for others', 2, 11, 'red').render();
 	}
-	this.stopWaiting = function() {
-		d.clearLoadingDots(menuAnimation, 2, 9);
-		menu.clear();
-	}
+	this.stopWaiting = () => d.clearLoadingDots(menuAnimation, 2, 9);
 
 	// PROCESS
 	this.start = function(option) {
@@ -291,7 +287,7 @@ const MenuDisplay = function(d) {
 		menu.move(logoX - 2, optionsY);
 		lobby.move(lobbyX, optionsY - 1);
 		menuAnimation.move(logoX - 2, optionsY);
-		menu.load(true);
+		menu.load().render();
 	}
 	this.clear = () => { menu.clear(); lobby.clear();}
 	this.exit = function() {

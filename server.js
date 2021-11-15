@@ -61,7 +61,9 @@ const server = net.createServer((socket) => {
 	*/
 
 	socket.on('ready', ready => {
-		players.get(socket.id).ready = ready;
+		const player = players.get(socket.id);
+		player.ready = ready;
+		console.log(player.name + ' is ' + (ready ? '' : 'not ') + 'ready');
 		sendLobbyEvent('ready', socket.id);
 	});
 

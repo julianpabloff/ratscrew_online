@@ -31,7 +31,7 @@ socket.on('error', error => {
 			case 'ECONNRESET' : message = 'Server full'; break;
 			default: message = 'Connection error (' + error.code + ')'; break;
 		}
-		display.menu.stopConnectionLoading(false);
+		display.menu.stopConnectionLoading('error');
 		controller.resetForm();
 		display.menu.drawOnline(controller.online, false, message);
 		controller.screen = 'online';
@@ -55,7 +55,7 @@ socket.on('connect', () => {
 		request('connection', playerData).then(lobbyData => {
 			connected = true;
 			processLobbyData(lobbyData);
-			display.menu.stopConnectionLoading(false, true);
+			display.menu.stopConnectionLoading('connection');
 			display.menu.drawLobby(lobby);
 			controller.screen = 'lobby';
 		});
@@ -163,7 +163,7 @@ function updateConnecting(command) {
 	if (command == 'cancel') {
 		connectionCancelled = true;
 		controller.screen = 'online';
-		display.menu.stopConnectionLoading();
+		display.menu.stopConnectionLoading('cancel');
 		socket.destroy();
 	}
 }

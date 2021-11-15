@@ -158,7 +158,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		process.stdout.cursorTo(x, y);
 		process.stdout.write(string);
 	}
-	this.render = function(clearLastFrame = true) {
+	this.render = function(clearLastFrame = true, clearCurrent = true) {
 		for (let i = 0; i < this.size; i++) {
 			let code = this.current[i];
 			const prevCode = this.previous[i];
@@ -193,13 +193,19 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 				drawToScreen(String.fromCharCode(drawingCode), screenLocation.x, screenLocation.y);
 				manager.lastRenderedColor = drawingColorCode;
 			}
-			this.current[i] = 0;
-			this.colors[i] = 0;
+			if (clearCurrent) {
+				this.current[i] = 0;
+				this.colors[i] = 0;
+			}
 			this.previous[i] = code;
 			this.prevColors[i] = colorCode;
 		}
 	}
-	this.paint = () => this.render(false); // For adding to the canvas without it clearing
+	// For adding to the canvas without it clearing
+	this.paint = function(save = true) {
+		this.render(false, !save);
+		return this;
+	}
 	this.fill = function(color, char = ' ') {
 		this.current.fill(char.charCodeAt(0));
 		manager.setBg(color);
@@ -214,6 +220,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 			if (savedBuffer[i] == 0) savedBuffer[i] = 32;
 		}
 		savedColors = new Uint8Array(this.colors);
+		return this;
 	}
 	const colorLookup = ['reset', 'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
 	this.read = function(x, y) {
@@ -224,10 +231,12 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 			fg: colorLookup[colorCode >> 4],
 			bg: colorLookup[colorCode & 0x0F]
 		};
+		return this;
 	}
 	this.load = function() {
 		this.current = new Uint16Array(savedBuffer);
 		this.colors = new Uint8Array(savedColors);
+		return this;
 	}
 	this.loadArea = function(x, y, width = 1, height = 1) {
 		const area = width * height;
@@ -240,11 +249,15 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 			if (i % width == 0) index = this.coordinateIndex(x, y + (i / width));
 			else index++;
 		} while (i < area);
+		return this;
 	}
 
-	this.clear = function() {
+	this.clearDraw = function() {
 		this.current = new Uint16Array(this.size);
 		this.colors = new Uint8Array(this.size);
+	}
+	this.clear = function(render = false) {
+		this.clearDraw();
 		this.render();
 		this.empty = true;
 		// if (this.outlined) this.outline('reset', false);

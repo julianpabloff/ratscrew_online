@@ -88,7 +88,7 @@ const Display = function() {
 		let increment = 0;
 		function dissolveHelper() {
 			if (increment == width) {
-				buffer.paint();
+				buffer.render();
 				this.animating = false;
 				clearInterval(dissolveInterval);
 			} else {
@@ -110,7 +110,7 @@ const Display = function() {
 			this.buffer.setFg('red');
 			if (position == distance) {
 				buffer.draw(' ', x - 2 + position, y);
-				buffer.paint();
+				buffer.render();
 				this.animating = false;
 				clearInterval(moveRight);
 			} else {
@@ -157,8 +157,7 @@ const Display = function() {
 			let i = 0;
 			for (let interval of dot.intervals) {
 				clearInterval(interval);
-				// if(dot.active[i]) this.drawLoadingDot(buffer, x + i, y, false);
-				if(dot.active[i]) buffer.erase(x + i, y);
+				buffer.erase(x + i, y);
 				i++;
 			}
 			buffer.paint();
