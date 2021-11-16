@@ -158,17 +158,21 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		process.stdout.cursorTo(x, y);
 		process.stdout.write(string);
 	}
-	this.render = function(clearLastFrame = true, clearCurrent = true) {
+	this.render = function(clearLastFrame = true) {
 		for (let i = 0; i < this.size; i++) {
 			let code = this.current[i];
+			let colorCode = this.colors[i];
 			const prevCode = this.previous[i];
-			const colorCode = this.colors[i];
 			const prevColorCode = this.prevColors[i];
+			if (!clearLastFrame && code == 0 && prevCode != 0) {
+				code = prevCode;
+				colorCode = prevColorCode;
+			}
 
 			const screenLocation = this.indexToScreen(i);
 			let drawingCode = code;
 			let drawingColorCode = colorCode;
-			if (code == 0 && clearLastFrame) {
+			if (code == 0) {// && clearLastFrame) {
 				const below = manager.somethingBelow(this, screenLocation.x, screenLocation.y);
 				if (below) {
 					drawingCode = below.char;
@@ -193,10 +197,8 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 				drawToScreen(String.fromCharCode(drawingCode), screenLocation.x, screenLocation.y);
 				manager.lastRenderedColor = drawingColorCode;
 			}
-			if (clearCurrent) {
-				this.current[i] = 0;
-				this.colors[i] = 0;
-			}
+			this.current[i] = 0;
+			this.colors[i] = 0;
 			this.previous[i] = code;
 			this.prevColors[i] = colorCode;
 		}
@@ -210,6 +212,8 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		this.current.fill(char.charCodeAt(0));
 		manager.setBg(color);
 		this.colors.fill(manager.color);
+		this.render();
+		manager.setBg('reset');
 	}
 
 	// Saving buffer and reading from the save

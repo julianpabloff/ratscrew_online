@@ -110,7 +110,7 @@ const Display = function() {
 			this.buffer.setFg('red');
 			if (position == distance) {
 				buffer.draw(' ', x - 2 + position, y);
-				buffer.render();
+				buffer.paint();
 				this.animating = false;
 				clearInterval(moveRight);
 			} else {
@@ -127,12 +127,11 @@ const Display = function() {
 	this.drawLoadingDot = function(buffer, x, y, draw, color = 'red') {
 		this.buffer.setFg(color);
 		const char = draw ? '.' : ' ';
-		buffer.draw(char, x, y);
-		buffer.paint();
+		buffer.draw(char, x, y).paint();
 	}
 	const dotTimeouts = [];
 	this.dotObjects = new Map();
-	this.loadingDots = function(buffer, count, x, y, interval = 300) {
+	this.loadingDots = function(buffer, x, y, count = 3, interval = 300) {
 		this.animating = true;
 		const seed = coordinateSeed(x, y);
 		const dotArray = new Uint8Array(count).fill(1);
@@ -160,7 +159,7 @@ const Display = function() {
 				buffer.erase(x + i, y);
 				i++;
 			}
-			buffer.paint();
+			// buffer.paint();
 			this.dotObjects.delete(seed);
 		}
 	}
@@ -173,9 +172,9 @@ const Display = function() {
 	}
 	let waitTimeout;
 	this.wait = async miliseconds => new Promise(resolve => waitTimeout = setTimeout(resolve, miliseconds));
+	const debug = this.buffer.new(0, 0, columns, 2);
 	this.debug = function(item) {
-		process.stdout.cursorTo(0,0);
-		console.log(item);
+		debug.draw(item, 0, 0, 'yellow').render();
 	}
 }
 

@@ -79,7 +79,7 @@ const MenuDisplay = function(d) {
 				const x = menu.x + 2;
 				const y = menu.y + 2 * i;
 				if (i == option) d.animateSelection(menu, selection, 2, 2 * i);
-				else d.dissolve(menuAnimation, selection.length, 2, 2 * i);
+				else d.dissolve(menu, selection.length, 2, 2 * i);
 			}
 			setTimeout(() => {
 				d.waiting = false;
@@ -109,7 +109,7 @@ const MenuDisplay = function(d) {
 			cursor.visible = !cursor.visible;
 			if (cursor.active) {
 				drawCursor();
-				menu.paint(false);
+				menu.paint();
 			}
 		}, 500);
 	}
@@ -173,6 +173,7 @@ const MenuDisplay = function(d) {
 				menuAnimation.draw(startingFrame, 2, 6, 'cyan');
 				menuAnimation.render();
 				d.dissolve(...params);
+
 			}
 		} else {
 			d.stopAnimating(menuAnimation);
@@ -186,17 +187,17 @@ const MenuDisplay = function(d) {
 	const connectionTimeouts = [];
 	this.startConnectionLoading = function() {
 		d.waiting = true;
-		menu.load();
+		// menu.load();
 		d.animateSelection(menu, connect, 2, 6);
 		connectionTimeouts.push(setTimeout(() => {
-			d.loadingDots(menu, 3, 2, 6);
+			d.loadingDots(menu, 2, 6);
 			d.waiting = false;
 		}, 250));
 		connectionTimeouts.push(setTimeout(() => {
-			menu.draw('Connecting', 2, 8, 'red').paint(false);
+			menu.draw('Connecting', 2, 8, 'red').paint();
 		}, 400));
 		connectionTimeouts.push(setTimeout(() => {
-			menu.draw('Press ESC to cancel', 2, 8, 'red').paint(false);
+			menu.draw('Press ESC to cancel', 2, 8, 'red').paint();
 		}, 2200));
 	}
 	this.stopConnectionLoading = function(type) {
@@ -231,7 +232,7 @@ const MenuDisplay = function(d) {
 				if (player.ready) {
 					menu.write('esc', 'magenta');
 					menu.draw('to ', 2, 7, 'white').write('CANCEL', 'cyan');
-					menu.draw('Waiting for others', 2, 11, 'red');
+					// menu.draw('Waiting for others', 2, 11, 'red');
 				} else {
 					menu.write('enter', 'magenta');
 					menu.draw('when ', 2, 7, 'white').write('READY', 'cyan');
@@ -267,11 +268,24 @@ const MenuDisplay = function(d) {
 	this.clearLobby = () => lobby.clear();
 
 	this.startWaiting = function() {
-		d.loadingDots(menuAnimation, 3, 2, 9);
-		menu.load();
-		menu.draw('Waiting for others', 2, 11, 'red').render();
+		menuAnimation.draw('Waiting for others', 2, 11, 'red').paint();
+		d.loadingDots(menuAnimation, 2, 9);
 	}
-	this.stopWaiting = () => d.clearLoadingDots(menuAnimation, 2, 9);
+	this.stopWaiting = function() {
+		d.clearLoadingDots(menuAnimation, 2, 9);
+		menuAnimation.clear();
+	}
+	const countdownTimeouts = [];
+	this.startCountdown = function() {
+		menuAnimation.draw('Starting game in', 2, 9, 'red');
+		for (let i = 0; i < 5; i++) {
+			countdownTimeouts.push(setTimeout(() => {
+				menuAnimation.draw((5 - i).toString(), 19, 9, 'red').paint();
+			}, 1000 * i));
+		}
+	}
+	this.stopCountdown = function() {
+	}
 
 	// PROCESS
 	this.start = function(option) {

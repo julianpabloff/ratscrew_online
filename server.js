@@ -1,11 +1,18 @@
 const net = require('net');
+const os = require('os');
+const game = require('./js/game.js');
 
-const host = '192.168.0.106';
+// const host = '192.168.0.106';
+let host;
 const port = 6969;
+const nets = os.networkInterfaces();
+for (const name of Object.keys(nets))
+	for (const net of nets[name])
+		if (net.family == 'IPv4' && !net.internal)
+			host = net.address;
 
 const players = new Map();
 const sockets = new Map();
-const lobby = {};
 
 const server = net.createServer((socket) => {
 	console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
@@ -38,7 +45,7 @@ const server = net.createServer((socket) => {
 		console.log(players);
 
 		socket.sendEvent('connection', getLobbyInfo());
-		sendLobbyEvent('enter', hash);
+		broadcastEvent('enter', hash);
 	});
 
 	/*
@@ -47,12 +54,9 @@ const server = net.createServer((socket) => {
 		console.log('socket timeout');
 		players.get(socket.id).connected = false;
 		// Tell the other players about the disconnect
-		sendLobbyEvent('disconnect', socket.id);
+		broadcastEvent('disconnect', socket.id);
 		// Pause the game or lobby
 		// Kick player after inactivity
-	});
-	socket.on('leave', () => {
-		socket.sendEvent('leave');
 	});
 	socket.on('clientPing', () => { 
 		socket.sendEvent('clientPing');
@@ -60,24 +64,27 @@ const server = net.createServer((socket) => {
 	});
 	*/
 
-	socket.on('ready', ready => {
-		const player = players.get(socket.id);
-		player.ready = ready;
-		console.log(player.name + ' is ' + (ready ? '' : 'not ') + 'ready');
-		sendLobbyEvent('ready', socket.id);
+	socket.on('broadcast', event => {
+		const type = event.type;
+		const data = event.data;
+		switch(type) {
+			case 'ready':
+				const player = players.get(socket.id);
+				player.ready = data;
+				console.log(player.name + ' is ' + (data ? '' : 'not ') + 'ready');
+				break;
+		}
+		broadcastEvent(type, socket.id);
 	});
 
 	socket.on('close', () => {
 		console.log('CLOSED: ' + socket.remoteAddress +':'+ socket.remotePort);
-		sendLobbyEvent('leave', socket.id);
 		players.delete(socket.id);
 		console.log(players);
 		clearInterval(pingInterval);
 	});
 
-	socket.on('error', (error) => {
-		console.log(error);
-	});
+	socket.on('error', error => console.log);
 
 	let pinging = false;
 	let connected = true;
@@ -99,14 +106,12 @@ const server = net.createServer((socket) => {
 			return Promise.resolve();
 		} else {
 			player.connected = false;
-			if (connected) sendLobbyEvent('disconnect', socket.id);
+			if (connected) broadcastEvent('disconnect', socket.id);
 			connected = false;
 			return Promise.reject('couldn\'t get ping');
 		}
 	}
-	const pingInterval = setInterval(() => {
-		socket.getPing().catch(() => {});
-	}, 2000);
+	const pingInterval = setInterval(() => socket.getPing().catch(()=>{}), 2000);
 
 }).listen(port, host);
 server.maxConnections = 4;
@@ -124,14 +129,14 @@ function getLobbyInfo() {
 	});
 	return playerArray;
 }
-function sendLobbyEvent(type, id) {
+function broadcastEvent(type, id) {
 	players.forEach(player => {
 		const affectedPlayer = players.get(id);
 		if (player.id != id) {
 			const socket = sockets.get(player.id);
 			socket.getPing(false).then(() => {
-				const json = {type: type, player: affectedPlayer};
-				socket.sendEvent('lobbyEvent', json);
+				const json = {type: type, data: affectedPlayer};
+				socket.sendEvent('broadcast', json);
 			}, () => {});
 		}
 	});

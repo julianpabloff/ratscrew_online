@@ -14,6 +14,8 @@ function request(name, data) {
 		socket.once(name, response => resolve(response));
 	});
 }
+const broadcast = (type, data) => sendEvent('broadcast', {type: type, data: data});
+
 socket.on('data', data => {
 	serverResponding = true;
 	const json = JSON.parse(data);
@@ -86,14 +88,30 @@ function processLobbyData(lobbyData) {
 		lobby.set(player.id, player);
 	}
 }
-socket.on('lobbyEvent', event => {
-	const player = event.player;
+function everyoneReady() {
+	for (const player of lobby.values())
+		if (!player.ready) return;
+	display.debug('everyone is ready');
+	display.menu.stopWaiting();
+	display.menu.startCountdown();
+	return true;
+}
+function everyoneElseReady() {
+	for (const player of lobby.values())
+		if (!player.ready && !player.you) return false;
+	return true;
+}
+socket.on('broadcast', event => {
+	const player = event.data;
 	switch(event.type) {
 		case 'enter':
 			player.you = false;
 			lobby.set(player.id, player);
 			break;
-		case 'ready': lobby.get(player.id).ready = player.ready; break;
+		case 'ready':
+			lobby.get(player.id).ready = player.ready;
+			if (player.ready) everyoneReady();
+			break;
 		case 'disconnect': lobby.get(player.id).connected = player.connected; break;
 		case 'leave': lobby.delete(player.id); break;
 	}
@@ -176,6 +194,7 @@ function updateLobby(command) {
 			display.menu.stopWaiting();
 		} else {
 			lobby.clear();
+			broadcast('leave');
 			socket.destroy();
 			controller.screen = 'online';
 			display.menu.clearLobby();
@@ -183,10 +202,11 @@ function updateLobby(command) {
 		}
 	} else if (command == 'ready' && !you.ready) {
 		you.ready = true;
-		display.menu.startWaiting();
+		if (!everyoneReady()) display.menu.startWaiting();
 	}
 	if (you.ready != prevReady) {
-		sendEvent('ready', you.ready);
+		// sendEvent('ready', you.ready);
+		broadcast('ready', you.ready);
 		display.menu.drawLobby(lobby);
 	}
 }
