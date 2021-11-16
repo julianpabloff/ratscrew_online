@@ -67,7 +67,7 @@ const Display = function() {
 	// Animations
 	this.animating = false;
 	this.waiting = false;
-	const animations = [];
+	let animations = [];
 	this.dissolve = function(buffer, width, x, y, duration = 200, content = false, color = false) {
 		const positions = new Uint8Array(width);
 		const sequence = new Uint8Array(width);
@@ -129,7 +129,7 @@ const Display = function() {
 		const char = draw ? '.' : ' ';
 		buffer.draw(char, x, y).paint();
 	}
-	const dotTimeouts = [];
+	let dotTimeouts = [];
 	this.dotObjects = new Map();
 	this.loadingDots = function(buffer, x, y, count = 3, interval = 300) {
 		this.animating = true;
@@ -150,6 +150,7 @@ const Display = function() {
 	this.clearLoadingDots = function(buffer, x, y) {
 		this.animating = false;
 		for (const timeout of dotTimeouts) clearTimeout(timeout);
+		dotTimeouts = [];
 		const seed = coordinateSeed(x, y);
 		const dot = this.dotObjects.get(seed);
 		if (dot) {
@@ -164,14 +165,11 @@ const Display = function() {
 		}
 	}
 	this.stopAnimating = function(buffer) {
-		for (const animation of animations) {
-			clearInterval(animation);
-		}
+		for (const animation of animations) clearInterval(animation);
+		animations = [];
 		if (buffer.empty) buffer.clear();
 		this.animating = false;
 	}
-	let waitTimeout;
-	this.wait = async miliseconds => new Promise(resolve => waitTimeout = setTimeout(resolve, miliseconds));
 	const debug = this.buffer.new(0, 0, columns, 2);
 	this.debug = function(item) {
 		debug.draw(item, 0, 0, 'yellow').render();

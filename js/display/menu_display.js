@@ -127,7 +127,7 @@ const MenuDisplay = function(d) {
 	const onlineOptions = ['SERVER ADDRESS', 'YOUR NAME', 'CONNECT'];
 	const lastIndex = onlineOptions.length - 1;
 	const connect = onlineOptions[lastIndex];
-	this.drawOnline = async function(data, animateConnect = false, errorMessage = false) {
+	this.drawOnline = function(data, animateConnect = false, errorMessage = false) {
 		for (let i = 0; i < onlineOptions.length - 1; i++) {
 			const value = onlineOptions[i];
 			const y = 3 * i;
@@ -184,7 +184,7 @@ const MenuDisplay = function(d) {
 		if (errorMessage) menu.draw(errorMessage, 2, 8, 'red');
 		menu.render();
 	}
-	const connectionTimeouts = [];
+	let connectionTimeouts = [];
 	this.startConnectionLoading = function() {
 		d.waiting = true;
 		// menu.load();
@@ -204,6 +204,7 @@ const MenuDisplay = function(d) {
 		d.waiting = false;
 		d.clearLoadingDots(menu, 2, 6);
 		for (const timeout of connectionTimeouts) clearTimeout(timeout);
+		connectionTimeouts = [];
 		switch(type) {
 			case 'connection': // Preserve just the server address
 				menu.loadArea(2, 0, 25, 2).save(); break;
@@ -267,16 +268,24 @@ const MenuDisplay = function(d) {
 	}
 	this.clearLobby = () => lobby.clear();
 
+	let waitingForOthers = false;
 	this.startWaiting = function() {
+		if (waitingForOthers) return;
+		waitingForOthers = true;
 		menuAnimation.draw('Waiting for others', 2, 11, 'red').paint();
 		d.loadingDots(menuAnimation, 2, 9);
 	}
 	this.stopWaiting = function() {
+		if (!waitingForOthers) return;
 		d.clearLoadingDots(menuAnimation, 2, 9);
 		menuAnimation.clear();
+		waitingForOthers = false;
 	}
-	const countdownTimeouts = [];
+	let countdownTimeouts = [];
+	let countingDown = false;
 	this.startCountdown = function() {
+		if (countingDown) return;
+		countingDown = true;
 		menuAnimation.draw('Starting game in', 2, 9, 'red');
 		for (let i = 0; i < 5; i++) {
 			countdownTimeouts.push(setTimeout(() => {
@@ -285,6 +294,11 @@ const MenuDisplay = function(d) {
 		}
 	}
 	this.stopCountdown = function() {
+		if (!countingDown) return;
+		for (const timeout of countdownTimeouts) clearTimeout(timeout);
+		countdownTimeouts = [];
+		menuAnimation.clear();
+		countingDown = false;
 	}
 
 	// PROCESS

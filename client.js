@@ -88,17 +88,13 @@ function processLobbyData(lobbyData) {
 		lobby.set(player.id, player);
 	}
 }
-function everyoneReady() {
-	for (const player of lobby.values())
-		if (!player.ready) return;
-	display.debug('everyone is ready');
-	display.menu.stopWaiting();
-	display.menu.startCountdown();
-	return true;
-}
-function everyoneElseReady() {
-	for (const player of lobby.values())
-		if (!player.ready && !player.you) return false;
+function everyoneReady(includeYou = true) {
+	if (lobby.size < 2) return false;
+	for (const player of lobby.values()) {
+		let check = !player.ready;
+		if (!includeYou) check = check && !player.you;
+		if (check) return false;
+	}
 	return true;
 }
 socket.on('broadcast', event => {
@@ -110,7 +106,14 @@ socket.on('broadcast', event => {
 			break;
 		case 'ready':
 			lobby.get(player.id).ready = player.ready;
-			if (player.ready) everyoneReady();
+			const youReady = lobby.get(hash).ready;
+			if (everyoneReady()) {
+				display.menu.stopWaiting();
+				display.menu.startCountdown();
+			} else if (youReady) {
+				display.menu.stopCountdown();
+				display.menu.startWaiting();
+			}
 			break;
 		case 'disconnect': lobby.get(player.id).connected = player.connected; break;
 		case 'leave': lobby.delete(player.id); break;
@@ -130,7 +133,7 @@ socket.on('timeout', () => {
 
 const keypress = require('keypress');
 const controller = new (require('./js/controller.js').Controller);
-const display = new(require('./js/display/display.js'));
+const display = new (require('./js/display/display.js'));
 
 async function updateMenu(command) {
 	if (display.waiting) return;
@@ -147,7 +150,7 @@ async function updateMenu(command) {
 		process.exit();
 	}
 }
-async function updateOnline(command) {
+function updateOnline(command) {
 	if (command == 'connect') {
 		const input = controller.online.buffer[0].join('');
 		const params = input.split(':');
@@ -191,7 +194,8 @@ function updateLobby(command) {
 	if (command == 'escape') {
 		if (you.ready) {
 			you.ready = false;
-			display.menu.stopWaiting();
+			if (everyoneReady(false)) display.menu.stopCountdown();
+			else display.menu.stopWaiting();
 		} else {
 			lobby.clear();
 			broadcast('leave');
@@ -202,7 +206,8 @@ function updateLobby(command) {
 		}
 	} else if (command == 'ready' && !you.ready) {
 		you.ready = true;
-		if (!everyoneReady()) display.menu.startWaiting();
+		if (everyoneReady(false)) display.menu.startCountdown();
+		else display.menu.startWaiting();
 	}
 	if (you.ready != prevReady) {
 		// sendEvent('ready', you.ready);
