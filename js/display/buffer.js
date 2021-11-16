@@ -99,7 +99,6 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.end = width - 1;
 	this.bottom = height - 1;
 	this.size = width * height;
-	this.empty = true;
 	this.outlined = false;
 	this.zIndex = zIndex;
 	this.transparent = true;
@@ -168,7 +167,6 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 				code = prevCode;
 				colorCode = prevColorCode;
 			}
-
 			const screenLocation = this.indexToScreen(i);
 			let drawingCode = code;
 			let drawingColorCode = colorCode;
@@ -255,7 +253,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		} while (i < area);
 		return this;
 	}
-
+	// Empties current drawing buffers
 	this.clearDraw = function() {
 		this.current = new Uint16Array(this.size);
 		this.colors = new Uint8Array(this.size);
@@ -263,7 +261,6 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.clear = function(render = false) {
 		this.clearDraw();
 		this.render();
-		this.empty = true;
 		// if (this.outlined) this.outline('reset', false);
 	}
 	// Only meant to be used for when the screen dimensions change

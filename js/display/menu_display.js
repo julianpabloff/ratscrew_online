@@ -55,6 +55,15 @@ const MenuDisplay = function(d) {
 		}
 		logo.render();
 	}
+	this.dissolveLogo = function() {
+		const offset = Math.floor(logoHeight / 2) - 2;
+		for (let i = 0; i < logoHeight / 2; i++) {
+			setTimeout(() => {
+				d.dissolve(logo, logo.width, 0, i, 150);
+				d.dissolve(logo, logo.width, 0, logoHeight - 1 - i, 150);
+			}, 75 * i);
+		}
+	}
 
 	// MENU
 	const menuOptions = ['LOCAL', 'ONLINE', 'SETTINGS'];
@@ -203,6 +212,7 @@ const MenuDisplay = function(d) {
 	this.stopConnectionLoading = function(type) {
 		d.waiting = false;
 		d.clearLoadingDots(menu, 2, 6);
+		if (d.animating) d.stopAnimating();
 		for (const timeout of connectionTimeouts) clearTimeout(timeout);
 		connectionTimeouts = [];
 		switch(type) {
@@ -317,10 +327,11 @@ const MenuDisplay = function(d) {
 		menuAnimation.move(logoX - 2, optionsY);
 		menu.load().render();
 	}
-	this.clear = () => { menu.clear(); lobby.clear();}
+	this.clear = () => { menu.clear(); menuAnimation.clear(); lobby.clear();}
 	this.exit = function() {
 		logo.clear();
 		menu.clear();
+		menuAnimation.clear();
 		lobby.clear();
 	}
 }

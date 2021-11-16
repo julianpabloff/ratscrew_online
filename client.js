@@ -97,6 +97,20 @@ function everyoneReady(includeYou = true) {
 	}
 	return true;
 }
+let countdown;
+function startCountdown() {
+	display.menu.stopWaiting();
+	display.menu.startCountdown();
+	countdown = setTimeout(() => {
+		display.menu.clear();
+		display.menu.dissolveLogo();
+		controller.screen = 'game';
+	}, 5000);
+}
+function stopCountdown() {
+	display.menu.stopCountdown();
+	clearTimeout(countdown);
+}
 socket.on('broadcast', event => {
 	const player = event.data;
 	switch(event.type) {
@@ -107,11 +121,9 @@ socket.on('broadcast', event => {
 		case 'ready':
 			lobby.get(player.id).ready = player.ready;
 			const youReady = lobby.get(hash).ready;
-			if (everyoneReady()) {
-				display.menu.stopWaiting();
-				display.menu.startCountdown();
-			} else if (youReady) {
-				display.menu.stopCountdown();
+			if (everyoneReady()) startCountdown();
+			else if (youReady) {
+				stopCountdown();
 				display.menu.startWaiting();
 			}
 			break;
@@ -169,7 +181,7 @@ function updateOnline(command) {
 		pendingConnections++;
 		const delayConnection = setTimeout(() => {
 			socket.connect(port, host);
-		}, 1300);
+		}, 300);
 		return;
 	} else if (command == 'quit') {
 		display.menu.hideCursor();
@@ -194,7 +206,7 @@ function updateLobby(command) {
 	if (command == 'escape') {
 		if (you.ready) {
 			you.ready = false;
-			if (everyoneReady(false)) display.menu.stopCountdown();
+			if (everyoneReady(false)) stopCountdown();
 			else display.menu.stopWaiting();
 		} else {
 			lobby.clear();
@@ -206,7 +218,7 @@ function updateLobby(command) {
 		}
 	} else if (command == 'ready' && !you.ready) {
 		you.ready = true;
-		if (everyoneReady(false)) display.menu.startCountdown();
+		if (everyoneReady(false)) startCountdown();
 		else display.menu.startWaiting();
 	}
 	if (you.ready != prevReady) {
@@ -215,12 +227,19 @@ function updateLobby(command) {
 		display.menu.drawLobby(lobby);
 	}
 }
+function updateGame(command) {
+	if (command == 'escape') {
+		socket.destroy();
+		process.exit();
+	}
+}
 
 const screenUpdates = {
 	menu: updateMenu,
 	online: updateOnline,
 	connecting: updateConnecting,
 	lobby: updateLobby,
+	game: updateGame
 };
 let screen = 'menu';
 
@@ -240,25 +259,13 @@ process.stdin.on('keypress', function(chunk, key) {
 	}
 });
 
-let rows = process.stdout.rows;
-let columns = process.stdout.columns;
-let currentlyResizing = false;
-let resizeTimer = 0;
-let resizeInterval = 17;
-setInterval(() => {
-	if (rows != process.stdout.rows || columns != process.stdout.columns) {
-		display.init();
-		display.menu.hideCursor();
-		currentlyResizing = true;
-		resizeTimer = 0;
-		rows = process.stdout.rows;
-		columns = process.stdout.columns;
-	} else if (currentlyResizing) {
-		resizeTimer += resizeInterval;
-		if (resizeTimer > 1000) {
-			currentlyResizing = false;
+let resizeCountdown;
+process.stdout.on('resize', () => {
+	display.init();
+	display.menu.hideCursor();
+	clearTimeout(resizeCountdown);
+	resizeCountdown = setTimeout(() => {
 			display.menu.toggleCursor(true);
 			display.resize(screen);
-		}
-	}
-}, resizeInterval);
+	}, 1000);
+});

@@ -185,6 +185,9 @@ const Controller = function() {
 		if (this.esc) return 'escape';
 		else if (this.enter) return 'ready';
 	}
+	this.gameUpdate = function() {
+		if (this.esc) return 'escape';
+	}
 	this.handleScreen = function() {
 		// if (screen == 'menu') return this.handleMenu();
 		return this[this.screen + 'Update']();

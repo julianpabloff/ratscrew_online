@@ -88,7 +88,7 @@ const Display = function() {
 		let increment = 0;
 		function dissolveHelper() {
 			if (increment == width) {
-				buffer.render();
+				if (content) buffer.render();
 				this.animating = false;
 				clearInterval(dissolveInterval);
 			} else {
@@ -132,7 +132,6 @@ const Display = function() {
 	let dotTimeouts = [];
 	this.dotObjects = new Map();
 	this.loadingDots = function(buffer, x, y, count = 3, interval = 300) {
-		this.animating = true;
 		const seed = coordinateSeed(x, y);
 		const dotArray = new Uint8Array(count).fill(1);
 		this.dotObjects.set(seed, { active: dotArray, intervals: [] });
@@ -148,7 +147,6 @@ const Display = function() {
 		}
 	}
 	this.clearLoadingDots = function(buffer, x, y) {
-		this.animating = false;
 		for (const timeout of dotTimeouts) clearTimeout(timeout);
 		dotTimeouts = [];
 		const seed = coordinateSeed(x, y);
@@ -167,10 +165,10 @@ const Display = function() {
 	this.stopAnimating = function(buffer) {
 		for (const animation of animations) clearInterval(animation);
 		animations = [];
-		if (buffer.empty) buffer.clear();
+		// if (buffer.empty) buffer.clear();
 		this.animating = false;
 	}
-	const debug = this.buffer.new(0, 0, columns, 2);
+	const debug = this.buffer.new(0, 0, columns, 2, 3);
 	this.debug = function(item) {
 		debug.draw(item, 0, 0, 'yellow').render();
 	}
