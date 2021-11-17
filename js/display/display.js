@@ -1,5 +1,6 @@
 const BufferManager = require('./buffer.js');
 const MenuDisplay = require('./menu_display.js');
+const GameDisplay = require('./game_display.js');
 
 const Display = function() {
 	const stdout = process.stdout;
@@ -47,6 +48,7 @@ const Display = function() {
 
 	// Screens
 	this.menu = new MenuDisplay(this);
+	this.game = new GameDisplay(this);
 	this.update = function(screen, type, data) {
 		this[screen][type](data);
 	}

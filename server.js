@@ -48,22 +48,6 @@ const server = net.createServer((socket) => {
 		broadcastEvent('enter', hash);
 	});
 
-	/*
-	socket.setTimeout(5000);
-	socket.on('timeout', (data) => {
-		console.log('socket timeout');
-		players.get(socket.id).connected = false;
-		// Tell the other players about the disconnect
-		broadcastEvent('disconnect', socket.id);
-		// Pause the game or lobby
-		// Kick player after inactivity
-	});
-	socket.on('clientPing', () => { 
-		socket.sendEvent('clientPing');
-		console.log('pong');
-	});
-	*/
-
 	socket.on('broadcast', event => {
 		const type = event.type;
 		const data = event.data;

@@ -1,6 +1,10 @@
 const net = require('net');
 const crypto = require('crypto');
+const keypress = require('keypress');
+const controller = new (require('./js/controller.js').Controller);
+const display = new (require('./js/display/display.js'));
 
+// Server interaction
 const socket = new net.Socket();
 let serverResponding = false;
 function sendEvent(name, data) {
@@ -81,36 +85,6 @@ socket.on('playerPings', connectionData => {
 		display.menu.drawLobby(lobby);
 });
 
-const lobby = new Map();
-function processLobbyData(lobbyData) {
-	for (const player of lobbyData) {
-		player.you = (player.id == hash);
-		lobby.set(player.id, player);
-	}
-}
-function everyoneReady(includeYou = true) {
-	if (lobby.size < 2) return false;
-	for (const player of lobby.values()) {
-		let check = !player.ready;
-		if (!includeYou) check = check && !player.you;
-		if (check) return false;
-	}
-	return true;
-}
-let countdown;
-function startCountdown() {
-	display.menu.stopWaiting();
-	display.menu.startCountdown();
-	countdown = setTimeout(() => {
-		display.menu.clear();
-		display.menu.dissolveLogo();
-		controller.screen = 'game';
-	}, 5000);
-}
-function stopCountdown() {
-	display.menu.stopCountdown();
-	clearTimeout(countdown);
-}
 socket.on('broadcast', event => {
 	const player = event.data;
 	switch(event.type) {
@@ -136,17 +110,49 @@ socket.on('broadcast', event => {
 socket.setTimeout(3000);
 socket.on('timeout', () => {
 	if (connected) {
-		process.stdout.cursorTo(1, 20);
-		console.log('timed out');
+		display.debug('Socket timed out');
 		lobby.get(hash).connected = false;
 		connected = false;
 	}
 });
 
-const keypress = require('keypress');
-const controller = new (require('./js/controller.js').Controller);
-const display = new (require('./js/display/display.js'));
+// Lobby
+const lobby = new Map();
+function processLobbyData(lobbyData) {
+	for (const player of lobbyData) {
+		player.you = (player.id == hash);
+		lobby.set(player.id, player);
+	}
+}
+function everyoneReady(includeYou = true) {
+	if (lobby.size < 2) return false;
+	for (const player of lobby.values()) {
+		let check = !player.ready;
+		if (!includeYou) check = check && !player.you;
+		if (check) return false;
+	}
+	return true;
+}
+let countdownTimeouts = [];
+function startCountdown() {
+	display.menu.stopWaiting();
+	display.menu.startCountdown();
+	countdownTimeouts.push(setTimeout(() => {
+		display.menu.clear();
+		display.menu.dissolveLogo();
+		controller.screen = 'game';
+	}, 5000));
+	countdownTimeouts.push(setTimeout(() => {
+		display.game.drawCard();
+	}, 6000));
+}
+function stopCountdown() {
+	display.menu.stopCountdown();
+	for (const timeout of countdownTimeouts) clearTimeout(timeout);
+	countdownTimeouts = [];
+}
 
+// Updates
 async function updateMenu(command) {
 	if (display.waiting) return;
 	const option = controller.menuOption;
@@ -245,6 +251,7 @@ let screen = 'menu';
 
 display.init();
 display.menu.start(controller.menuOption);
+display.game.drawCard(0,0);
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);

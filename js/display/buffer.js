@@ -85,6 +85,7 @@ const BufferManager = function() {
 		const bgCode = this.colors[background];
 		this.color = (fgCode << 4) + bgCode;
 	}
+	this.setColorCode = code => this.color = code;
 	this.resetColor = function() {
 		this.color = 0;
 	}
@@ -298,6 +299,10 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	}
 	this.outline.clear = () => {
 		if (this.outlined) this.outline('reset', false);
+	}
+	this.enablePixels = function() {
+		const PixelEngine = require('./pixels.js');
+		this.pixel = new PixelEngine(manager, this);
 	}
 }
 
