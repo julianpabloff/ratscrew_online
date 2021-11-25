@@ -251,7 +251,8 @@ let screen = 'menu';
 
 display.init();
 display.menu.start(controller.menuOption);
-display.game.drawCard(0,0);
+display.game.drawCardArea();
+display.game.drawCard(8, 'c', 0, 0);
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
@@ -264,6 +265,14 @@ process.stdin.on('keypress', function(chunk, key) {
 		const command = controller.handleScreen(controller.screen);
 		if (command) screenUpdates[controller.screen](command);
 	}
+	const value = Math.floor(Math.random() * 9) + 2;
+	const suits = ['h', 'c', 'd', 's'];
+	const suit = suits[Math.floor(Math.random() * suits.length)];
+	const start = Date.now();
+	display.game.drawCard(value, suit, 0, 0);
+	process.stdout.cursorTo(0,0);
+	const delta = Date.now() - start;
+	console.log('\x1b[0m' + delta.toString() + 'ms  ');
 });
 
 let resizeCountdown;
