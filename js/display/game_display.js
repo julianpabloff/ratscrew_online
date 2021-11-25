@@ -27,6 +27,19 @@ const GameDisplay = function(d) {
 		game.pixel.draw(card, 0, 0);
 		game.pixel.apply();
 	}
+	const rotateGrid = function(grid) {
+		const output = [];
+		const bottom = grid.length - 1;
+		for (let i = bottom; i >= 0; i--) {
+			const row = [];
+			const end = grid[i].length - 1;
+			for (let j = end; j >= 0; j--) {
+				row.push(grid[i][j]);
+			}
+			output.push(row);
+		}
+		return output;
+	}
 	this.drawCard = function(value, suit, x, y) {
 		game.pixel.fillArea(3, 3, 39, 57, 'white');
 		const valueGrid = design.values[value - 2];
@@ -38,14 +51,22 @@ const GameDisplay = function(d) {
 				else valueOutput[i].push(8);
 		}
 		const smallSuit = design.smallSuits[suit];
+		// Top right corner
 		game.pixel.draw(valueOutput, 3, 3);
 		game.pixel.draw(smallSuit, 3, 9);
-		const bigSuit = design.bigSuits[suit];
-		for (let map of design.maps[value - 2]) {
-			let y = map.y;
-			if (map.inverted) y--;
-			game.pixel.draw(bigSuit, map.x, y, map.inverted);
+		if (value < 11) { // Number cards
+			const bigSuit = design.bigSuits[suit];
+			for (let map of design.maps[value - 2]) {
+				let y = map.y;
+				if (map.inverted) y--;
+				game.pixel.draw(bigSuit, map.x, y, map.inverted);
+			}
+		} else { // Face card
+			const face = design.faces[0][suit];
+			game.pixel.draw(face, 9, 8);
+			game.pixel.draw(rotateGrid(face), 9, 31);
 		}
+		// Lower right corner
 		game.pixel.draw(valueOutput, 37, 55, true);
 		game.pixel.draw(smallSuit, 37, 48, true);
 		game.pixel.apply();
