@@ -55,7 +55,6 @@ const GameDisplay = function(d) {
 		game.pixel.draw(valueOutput, 3, 3);
 		game.pixel.draw(smallSuit, 3, 9);
 		if (value < 11) { // Number cards
-			const bigSuit = design.bigSuits[suit];
 			for (let map of design.maps[value - 2]) {
 				let y = map.y;
 				let bigSuit = design.bigSuits[suit];
@@ -66,7 +65,13 @@ const GameDisplay = function(d) {
 				game.pixel.draw(bigSuit, map.x, y);
 			}
 		} else { // Face card
-			const face = design.faces[Math.floor(Math.random() * 2)][suit];
+			// Put suit behind faces
+			// let bigSuit = design.bigSuits[suit];
+			// game.pixel.draw(bigSuit, 11, 10);
+			// bigSuit = rotateGrid(bigSuit);
+			// game.pixel.draw(bigSuit, 25, 43);
+			// Draw face design
+			const face = design.faces[value - 11][suit];
 			game.pixel.draw(face, 9, 8);
 			game.pixel.draw(rotateGrid(face), 9, 31);
 		}
