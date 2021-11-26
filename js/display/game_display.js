@@ -58,17 +58,21 @@ const GameDisplay = function(d) {
 			const bigSuit = design.bigSuits[suit];
 			for (let map of design.maps[value - 2]) {
 				let y = map.y;
-				if (map.inverted) y--;
-				game.pixel.draw(bigSuit, map.x, y, map.inverted);
+				let bigSuit = design.bigSuits[suit];
+				if (map.inverted) {
+					y--;
+					bigSuit = rotateGrid(bigSuit);
+				}
+				game.pixel.draw(bigSuit, map.x, y);
 			}
 		} else { // Face card
-			const face = design.faces[0][suit];
+			const face = design.faces[Math.floor(Math.random() * 2)][suit];
 			game.pixel.draw(face, 9, 8);
 			game.pixel.draw(rotateGrid(face), 9, 31);
 		}
 		// Lower right corner
-		game.pixel.draw(valueOutput, 37, 55, true);
-		game.pixel.draw(smallSuit, 37, 48, true);
+		game.pixel.draw(rotateGrid(valueOutput), 37, 55);
+		game.pixel.draw(rotateGrid(smallSuit), 37, 48);
 		game.pixel.apply();
 		game.render();
 	}

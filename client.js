@@ -271,8 +271,8 @@ process.stdin.on('keypress', function(chunk, key) {
 	const start = Date.now();
 	display.game.drawCard(value, suit, 0, 0);
 	// process.stdout.cursorTo(0,0);
-	// const delta = Date.now() - start;
-	// console.log('\x1b[0m' + delta.toString() + 'ms  ');
+	const delta = Date.now() - start;
+	display.debug(delta.toString() + 'ms  ');
 });
 
 let resizeCountdown;

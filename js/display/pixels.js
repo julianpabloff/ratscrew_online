@@ -3,16 +3,14 @@ const PixelEngine = function(manager, buffer) {
 	this.grid = new Uint8Array(this.size);
 	const colors = { reset: 0, black: 1, red: 2, green: 3, yellow: 4, blue: 5, magenta: 6, cyan: 7, white: 8 };
 	const coordinateIndex = (x, y) => (y * buffer.width) + x; // grid x & y to grid array index
-	this.draw = function(grid, x, y, invert = false) {
+	this.draw = function(grid, x, y) {
 		const width = grid[0].length;
 		const height = grid.length;
 		for (let i = 0; i < height; i++) {
-			const gridIndex = invert ? height - i - 1 : i;
 			const index = coordinateIndex(x, y + i);
 			for (let j = 0; j < width; j++) {
-				const rowIndex = invert ? width - j - 1 : j;
-				const pixel = grid[gridIndex][rowIndex];
-				if (pixel) this.grid[index + j] = grid[gridIndex][rowIndex];
+				const pixel = grid[i][j];
+				if (pixel) this.grid[index + j] = pixel;
 			}
 		}
 	}
