@@ -265,7 +265,7 @@ process.stdin.on('keypress', function(chunk, key) {
 		const command = controller.handleScreen(controller.screen);
 		if (command) screenUpdates[controller.screen](command);
 	}
-	const value = Math.floor(Math.random() * 12) + 2;
+	const value = Math.floor(Math.random() * 14) + 1;
 	const suits = ['h', 'c', 'd', 's'];
 	const suit = suits[Math.floor(Math.random() * suits.length)];
 	const start = Date.now();
