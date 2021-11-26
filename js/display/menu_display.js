@@ -59,9 +59,10 @@ const MenuDisplay = function(d) {
 		const offset = Math.floor(logoHeight / 2) - 2;
 		for (let i = 0; i < logoHeight / 2; i++) {
 			setTimeout(() => {
-				d.dissolve(logo, logo.width, 0, i, 150);
-				d.dissolve(logo, logo.width, 0, logoHeight - 1 - i, 150);
-			}, 75 * i);
+				logo.erase(0, i, logo.width);
+				// d.dissolve(logo, logo.width, 0, i, 50);
+				// d.dissolve(logo, logo.width, 0, logoHeight - 1 - i, 50);
+			}, 25 * i);
 		}
 	}
 
@@ -173,19 +174,21 @@ const MenuDisplay = function(d) {
 				startCursorBlink();
 			}
 			if (animateConnect) {
-				const params = [menuAnimation, connect.length, 2, 6, 250];
+				const params = [menuAnimation, connect.length, 2, 6, 200];
 				if (data.filled) {
 					startingFrame = ' '.repeat(connect.length);
 					params.push(connect, 'cyan');
 				} else startingFrame = connect;
 				if (d.animating) d.stopAnimating(menuAnimation);
-				menuAnimation.draw(startingFrame, 2, 6, 'cyan');
-				menuAnimation.render();
+				else {
+					menuAnimation.draw(startingFrame, 2, 6, 'cyan');
+					menuAnimation.render();
+				}
 				d.dissolve(...params);
 
 			}
 		} else {
-			d.stopAnimating(menuAnimation);
+			d.stopAnimating(menuAnimation, true);
 			cursor.active = false;
 			menu.draw('> ' + connect, 0, 6, 'red');
 			menu.save();

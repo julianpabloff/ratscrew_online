@@ -143,7 +143,7 @@ function startCountdown() {
 		controller.screen = 'game';
 	}, 5000));
 	countdownTimeouts.push(setTimeout(() => {
-		display.game.drawCard();
+		// display.game.drawCard();
 	}, 6000));
 }
 function stopCountdown() {
@@ -250,9 +250,9 @@ const screenUpdates = {
 let screen = 'menu';
 
 display.init();
-// display.menu.start(controller.menuOption);
-display.game.drawCardArea();
-display.game.drawCard(8, 'c', 0, 0);
+display.menu.start(controller.menuOption);
+// display.game.drawCardArea();
+// display.game.drawCard(8, 'c', 0, 0);
 
 keypress(process.stdin);
 process.stdin.setRawMode(true);
@@ -265,6 +265,7 @@ process.stdin.on('keypress', function(chunk, key) {
 		const command = controller.handleScreen(controller.screen);
 		if (command) screenUpdates[controller.screen](command);
 	}
+	/*
 	const value = Math.floor(Math.random() * 14) + 1;
 	const suits = ['h', 'c', 'd', 's'];
 	const suit = suits[Math.floor(Math.random() * suits.length)];
@@ -273,6 +274,7 @@ process.stdin.on('keypress', function(chunk, key) {
 	// process.stdout.cursorTo(0,0);
 	const delta = Date.now() - start;
 	display.debug(delta.toString() + 'ms  ');
+	*/
 });
 
 let resizeCountdown;

@@ -48,7 +48,7 @@ const Display = function() {
 
 	// Screens
 	this.menu = new MenuDisplay(this);
-	this.game = new GameDisplay(this);
+	// this.game = new GameDisplay(this);
 	this.update = function(screen, type, data) {
 		this[screen][type](data);
 	}
@@ -157,17 +157,16 @@ const Display = function() {
 			let i = 0;
 			for (let interval of dot.intervals) {
 				clearInterval(interval);
-				buffer.erase(x + i, y);
 				i++;
 			}
 			// buffer.paint();
 			this.dotObjects.delete(seed);
 		}
 	}
-	this.stopAnimating = function(buffer) {
+	this.stopAnimating = function(buffer, clear = false) {
 		for (const animation of animations) clearInterval(animation);
 		animations = [];
-		// if (buffer.empty) buffer.clear();
+		if (clear) buffer.clear();
 		this.animating = false;
 	}
 	const debug = this.buffer.new(0, 0, columns, 2, 3);
