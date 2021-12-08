@@ -68,9 +68,23 @@ const Display = function() {
 
 	// Animations
 	this.animating = false;
-	this.waiting = false;
-	let animations = [];
+	const coordinateSeed = (x, y) => y + (x << 8);
+	const animations = new Map();
+	this.startAnimation = function(x, y) {
+		this.animating = true;
+		const seed = coordinateSeed(x, y);
+		animations.set(seed, []);
+		return animations.get(seed);
+	}
+	this.endAnimation = function(x, y) {
+		const seed = coordinateSeed(x, y);
+		const timeouts = animations.get(seed);
+		for (const timeoutheh of timeouts) clearTimeout(timeoutheh);
+		animations.delete(seed);
+		if (animations.size == 0) this.animating = false;
+	}
 	this.dissolve = function(buffer, width, x, y, duration = 200, content = false, color = false) {
+		const timeouts = this.startAnimation(x, y);
 		const positions = new Uint8Array(width);
 		const sequence = new Uint8Array(width);
 		let sequenceIndex = 0;
@@ -87,45 +101,37 @@ const Display = function() {
 				}
 			}
 		}
-		let increment = 0;
-		function dissolveHelper() {
-			if (increment == width) {
-				if (content) buffer.render();
-				this.animating = false;
-				clearInterval(dissolveInterval);
-			} else {
-				const char = content ? content[sequence[increment]] : ' ';
+		for (let i = 0; i < width; i++) {
+			timeouts.push(setTimeout(() => {
+				const char = content ? content[sequence[i]] : ' ';
 				if (color) this.buffer.setFg(color);
-				buffer.draw(char, x + sequence[increment], y);
+				buffer.draw(char, x + sequence[i], y);
 				buffer.paint();
-				increment++;
-			}
+			}, (duration / width) * i));
 		}
-		const dissolveInterval = setInterval(dissolveHelper.bind(this), duration / width);
-		this.animating = true;
-		animations.push(dissolveInterval);
+		timeouts.push(setTimeout(() => this.endAnimation(x, y), duration));
 	}
 	this.animateSelection = function(buffer, text, x, y, duration = 200) {
+		const timeouts = this.startAnimation(x, y);
 		const distance = text.length + 3;
 		let position = 0;
-		function drawAnimation() {
-			this.buffer.setFg('red');
-			if (position == distance) {
-				buffer.draw(' ', x - 2 + position, y);
-				buffer.paint();
-				this.animating = false;
-				clearInterval(moveRight);
-			} else {
-				buffer.draw(' > ', x - 2 + position, y);
-				buffer.paint();
-				position++;
-			}
+		for (let i = 0; i < distance; i++) {
+			timeouts.push(setTimeout(() => {
+				this.buffer.setFg('red');
+				buffer.draw(' > ', x + i - 2, y).paint();
+			}, (duration / distance) * i));
 		}
-		const moveRight = setInterval(drawAnimation.bind(this), duration / distance);
-		this.animating = true;
-		animations.push(moveRight);
+		timeouts.push(setTimeout(() => {
+			buffer.draw(' ', x + distance - 2, y).paint();
+			this.endAnimation(x, y);
+		}, duration));
 	}
-	const coordinateSeed = (x, y) => y + (x << 8);
+	this.stopAnimating = function(buffer = false) {
+		animations.forEach(timeout => clearTimeout(timeout));
+		this.animating = false;
+		if (buffer) buffer.clear();
+	}
+
 	this.drawLoadingDot = function(buffer, x, y, draw, color = 'red') {
 		this.buffer.setFg(color);
 		const char = draw ? '.' : ' ';
@@ -162,12 +168,6 @@ const Display = function() {
 			// buffer.paint();
 			this.dotObjects.delete(seed);
 		}
-	}
-	this.stopAnimating = function(buffer, clear = false) {
-		for (const animation of animations) clearInterval(animation);
-		animations = [];
-		if (clear) buffer.clear();
-		this.animating = false;
 	}
 	const debug = this.buffer.new(0, 0, columns, 2, 3);
 	this.debug = function(item) {

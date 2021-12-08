@@ -59,10 +59,9 @@ const MenuDisplay = function(d) {
 		const offset = Math.floor(logoHeight / 2) - 2;
 		for (let i = 0; i < logoHeight / 2; i++) {
 			setTimeout(() => {
-				logo.erase(0, i, logo.width);
-				// d.dissolve(logo, logo.width, 0, i, 50);
-				// d.dissolve(logo, logo.width, 0, logoHeight - 1 - i, 50);
-			}, 25 * i);
+				d.dissolve(logo, logo.width, 0, i, 100);
+				d.dissolve(logo, logo.width, 0, logoHeight - 1 - i, 100);
+			}, 50 * i);
 		}
 	}
 
@@ -179,7 +178,7 @@ const MenuDisplay = function(d) {
 					startingFrame = ' '.repeat(connect.length);
 					params.push(connect, 'cyan');
 				} else startingFrame = connect;
-				if (d.animating) d.stopAnimating(menuAnimation);
+				if (d.animating) d.stopAnimating();
 				else {
 					menuAnimation.draw(startingFrame, 2, 6, 'cyan');
 					menuAnimation.render();
@@ -188,7 +187,7 @@ const MenuDisplay = function(d) {
 
 			}
 		} else {
-			d.stopAnimating(menuAnimation, true);
+			d.stopAnimating(menuAnimation);
 			cursor.active = false;
 			menu.draw('> ' + connect, 0, 6, 'red');
 			menu.save();

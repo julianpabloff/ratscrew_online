@@ -41,7 +41,6 @@ const PixelEngine = function(manager, buffer) {
 		let i = 0;
 		lastColor = manager.setColorCode(output[0][0].color);
 		manager.setColorCode(lastColor);
-			buffer.cursorTo(0,0);
 		for (const pixelArray of output) {
 			for (let pixelPair of pixelArray) {
 				const color = pixelPair.color;

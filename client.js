@@ -187,7 +187,7 @@ function updateOnline(command) {
 		pendingConnections++;
 		const delayConnection = setTimeout(() => {
 			socket.connect(port, host);
-		}, 300);
+		}, 2000);
 		return;
 	} else if (command == 'quit') {
 		display.menu.hideCursor();
