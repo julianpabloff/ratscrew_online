@@ -29,11 +29,11 @@ const MenuDisplay = function(d) {
 	this.setSize();
 
 	// BUFFERS
-	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight);
-	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15);
-	const lobby = d.buffer.new(lobbyX, optionsY - 1, logoEndX - lobbyX, 13);
+	const logo = d.buffer.new(logoX - 3, logoY, logoWidth + 6, logoHeight, 'menu');
+	const menu = d.buffer.new(logoX - 2, optionsY, 35, 15, 'menu');
+	const lobby = d.buffer.new(lobbyX, optionsY - 1, logoEndX - lobbyX, 13, 'menu');
 	menu.transparent = false;
-	const menuAnimation = d.buffer.new(logoX - 2, optionsY, 35, 15, 1);
+	const menuAnimation = d.buffer.new(logoX - 2, optionsY, 35, 15, 'menu', 1);
 
 	// LOGO
 	this.drawLogo = function() {

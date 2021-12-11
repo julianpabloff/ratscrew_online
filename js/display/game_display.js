@@ -1,9 +1,15 @@
 const GameDisplay = function(d) {
 	this.setSize = function() {
-
+		gameX = d.centerWidth(46);
+		gameY = d.centerHeight(32);
+		lobbyX = gameX - 50;
 	}
-	const game = d.buffer.new(1, 2, 46, 32, 0);
+	let gameX, gameY, lobbyX;
+	this.setSize();
+	const game = d.buffer.new(gameX, gameY, 46, 32, 'game', 1);
 	game.enablePixels();
+
+
 	const design = require('./cardDesigns.json');
 	// Make b&w version of joker face
 	const jokerFace = design.joker.face;
@@ -51,7 +57,7 @@ const GameDisplay = function(d) {
 		}
 		return output;
 	}
-	this.drawCard = function(value, suit, x, y) {
+	this.drawCard = function(value, suit) {
 		game.pixel.fillArea(3, 3, 39, 57, 'white');
 		if (value == 1) { // Joker
 			const joker = design.joker;
@@ -103,6 +109,17 @@ const GameDisplay = function(d) {
 		}
 		game.pixel.apply();
 		game.render();
+	}
+
+	const lobby = d.buffer.new(lobbyX, gameY, 40, 32, 'game');
+
+	this.drawLobby = function() {
+		lobby.outline('green');
+		lobby.render();
+	}
+
+	this.moveBuffers = function() {
+		game.move(gameX, gameY);
 	}
 }
 

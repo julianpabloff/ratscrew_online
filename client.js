@@ -143,7 +143,10 @@ function startCountdown() {
 		controller.screen = 'game';
 	}, 5000));
 	countdownTimeouts.push(setTimeout(() => {
-		// display.game.drawCard();
+		display.buffer.switch('game');
+		display.game.drawCardArea();
+		display.game.drawCard(8, 'c');
+		display.game.drawLobby();
 	}, 6000));
 }
 function stopCountdown() {
@@ -187,7 +190,7 @@ function updateOnline(command) {
 		pendingConnections++;
 		const delayConnection = setTimeout(() => {
 			socket.connect(port, host);
-		}, 2000);
+		}, 300);
 		return;
 	} else if (command == 'quit') {
 		display.menu.hideCursor();
@@ -257,6 +260,7 @@ display.menu.start(controller.menuOption);
 keypress(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.on('keypress', function(chunk, key) {
+	if (resizing) return;
 	const keyPressed = (key == undefined) ? chunk : key.name;
 	let params = [keyPressed];
 	if (key != undefined) params.push(key.shift, key.ctrl);
@@ -278,12 +282,15 @@ process.stdin.on('keypress', function(chunk, key) {
 });
 
 let resizeCountdown;
+let resizing = false;
 process.stdout.on('resize', () => {
 	display.init();
 	display.menu.hideCursor();
 	clearTimeout(resizeCountdown);
+	resizing = true;
 	resizeCountdown = setTimeout(() => {
 			display.menu.toggleCursor(true);
 			display.resize(screen);
+			setTimeout(() => resizing = false, 100);
 	}, 1000);
 });

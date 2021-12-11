@@ -9,17 +9,32 @@ const BufferManager = function() {
 		}
 		return low;
 	}
-	this.zArray = [];
-	this.new = function(x, y, width, height, zIndex = 0) {
-		const buffer = new DisplayBuffer(x, y, width, height, this, zIndex);
-		if (this.zArray.length > 0) this.zArray.splice(sortedIndex(this.zArray, zIndex), 0, buffer);
-		else this.zArray.push(buffer);
+	this.screens = {};
+	this.new = function(x, y, width, height, screen = 'main', zIndex = 0) {
+		if (!this.screen) this.screen = screen;
+		if (!this.screens[screen]) this.screens[screen] = [];
+		const zArray = this.screens[screen];
+		const buffer = new DisplayBuffer(x, y, width, height, this, screen, zIndex);
+		if (zArray.length > 0) zArray.splice(sortedIndex(zArray, zIndex), 0, buffer);
+		else zArray.push(buffer);
 		return buffer;
 	}
+	this.switch = function(screen) {
+		for (const buffer of this.screens[this.screen]) {
+			if (!buffer.empty) buffer.hide();
+			if (buffer.outlined) buffer.outline.hide();
+		}
+		this.screen = screen;
+		for (const buffer of this.screens[screen]) {
+			if (buffer.outlined) buffer.outline();
+			if (buffer.hidden) buffer.show();
+		}
+	}
 	this.somethingAbove = function(target, x, y) {
-		if (this.zArray.length < 2) return false;
+		const zArray = this.screens[this.screen];
+		if (zArray.length < 2) return false;
 		let found = false;
-		for (const buffer of this.zArray) {
+		for (const buffer of zArray) {
 			const index = buffer.screenToIndex(x, y);
 			if (found && index != null) {
 				if (!buffer.transparent) return true;
@@ -30,10 +45,11 @@ const BufferManager = function() {
 		return false;
 	}
 	this.somethingBelow = function(target, x, y) {
-		if (this.zArray.length < 2) return false;
+		const zArray = this.screens[this.screen];
+		if (zArray.length < 2) return false;
 		let found = false;
-		for (let i = this.zArray.length - 1; i >= 0; i--) {
-			const buffer = this.zArray[i];
+		for (let i = zArray.length - 1; i >= 0; i--) {
+			const buffer = zArray[i];
 			const index = buffer.screenToIndex(x, y);
 			if (found && index != null) {
 				const code = buffer.previous[index];
@@ -75,15 +91,18 @@ const BufferManager = function() {
 	this.setFg = function(color) {
 		const fgCode = this.colors[color];
 		this.color = (fgCode << 4) + (this.color & 0x0F);
+		return this.color;
 	}
 	this.setBg = function(color) {
 		const bgCode = this.colors[color];
 		this.color = (this.color & 0xF0) + bgCode;
+		return this.color;
 	}
 	this.setColor = function(foreground, background) {
 		const fgCode = this.colors[foreground];
 		const bgCode = this.colors[background];
 		this.color = (fgCode << 4) + bgCode;
+		return this.color;
 	}
 	this.setColorCode = code => this.color = code;
 	this.resetColor = function() {
@@ -92,7 +111,7 @@ const BufferManager = function() {
 }
 
 const crypto = require('crypto');
-const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
+const DisplayBuffer = function(x, y, width, height, manager, screen, zIndex = 0) {
 	this.x = x;
 	this.y = y;
 	this.width = width;
@@ -100,15 +119,13 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.end = width - 1;
 	this.bottom = height - 1;
 	this.size = width * height;
+	this.empty = true;
 	this.outlined = false;
+	this.screen = screen;
 	this.zIndex = zIndex;
 	this.transparent = true;
 	this.id = crypto.randomBytes(32);
 
-	function bufferWithSpaces(size) {
-		let buffer = new Uint16Array(size);
-		return buffer.fill(32);
-	}
 	this.current = new Uint16Array(this.size);
 	this.previous = new Uint16Array(this.size);
 	this.colors = new Uint8Array(this.size);
@@ -183,6 +200,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 				}
 			}
 			const draw = 
+				(manager.screen == this.screen) &&
 				(code != prevCode || colorCode != prevColorCode) &&
 				(!manager.somethingAbove(this, screenLocation.x, screenLocation.y));
 			if (draw) {
@@ -254,6 +272,20 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 		} while (i < area);
 		return this;
 	}
+	let hideBuffer, hideColors;
+	this.hidden = false;
+	this.hide = function() {
+		hideBuffer = new Uint16Array(this.previous);
+		hideColors = new Uint8Array(this.prevColors);
+		this.clear();
+		this.hidden = true;
+	}
+	this.show = function() {
+		this.current = new Uint16Array(hideBuffer);
+		this.colors = new Uint8Array(hideColors);
+		this.render();
+		this.hidden = false;
+	}
 	// Empties current drawing buffers
 	this.clearDraw = function() {
 		this.current = new Uint16Array(this.size);
@@ -262,7 +294,7 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 	this.clear = function(render = false) {
 		this.clearDraw();
 		this.render();
-		// if (this.outlined) this.outline('reset', false);
+		this.empty = true;
 	}
 	// Only meant to be used for when the screen dimensions change
 	this.move = function(x, y) {
@@ -280,25 +312,31 @@ const DisplayBuffer = function(x, y, width, height, manager, zIndex = 0) {
 
 	// For seeing where it is
 	let outlineColor = 'reset';
-	this.outline = function(color = 'reset', draw = true) {
-		const fgCode = manager.colors[color];
-		process.stdout.write('\x1b[0m');
-		process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
-		const sq = draw ?
-			{tl: '┌', h: '─', tr: '┐', v: '│', bl: '└', br: '┘'}:
-			{tl: ' ', h: ' ', tr: ' ', v: ' ', bl: ' ', br: ' '};
-		drawToScreen(sq.tl + sq.h.repeat(this.width) + sq.tr, this.x - 1, this.y - 1);
-		for (let i = 0; i < this.height; i++) {
-			drawToScreen(sq.v, this.x - 1, this.y + i);
-			drawToScreen(sq.v, this.x + this.width, this.y + i);
+	this.outline = function(color = outlineColor, draw = true) {
+		if (this.screen == manager.screen) {
+			const fgCode = manager.colors[color];
+			process.stdout.write('\x1b[0m');
+			process.stdout.write('\x1b[' + (29 * (fgCode != 0) + fgCode).toString() + 'm');
+			const sq = draw ?
+				{tl: '┌', h: '─', tr: '┐', v: '│', bl: '└', br: '┘'}:
+				{tl: ' ', h: ' ', tr: ' ', v: ' ', bl: ' ', br: ' '};
+			drawToScreen(sq.tl + sq.h.repeat(this.width) + sq.tr, this.x - 1, this.y - 1);
+			for (let i = 0; i < this.height; i++) {
+				drawToScreen(sq.v, this.x - 1, this.y + i);
+				drawToScreen(sq.v, this.x + this.width, this.y + i);
+			}
+			drawToScreen(sq.bl + sq.h.repeat(this.width) + sq.br, this.x - 1, this.y + this.height);
+			manager.lastRenderedColor = manager.setColor(color, 'reset');
 		}
-		drawToScreen(sq.bl + sq.h.repeat(this.width) + sq.br, this.x - 1, this.y + this.height);
 		this.outlined = draw;
 		if (draw) outlineColor = color;
-		currentColor = { fg: fgCode, bg: 0 };
 	}
 	this.outline.clear = () => {
 		if (this.outlined) this.outline('reset', false);
+	}
+	this.outline.hide = () => {
+		this.outline.clear();
+		this.outlined = true;
 	}
 	this.enablePixels = function() {
 		const PixelEngine = require('./pixels.js');

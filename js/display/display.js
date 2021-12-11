@@ -48,13 +48,13 @@ const Display = function() {
 
 	// Screens
 	this.menu = new MenuDisplay(this);
-	// this.game = new GameDisplay(this);
+	this.game = new GameDisplay(this);
 	this.update = function(screen, type, data) {
 		this[screen][type](data);
 	}
 	this.resize = function(screen) {
 		this.setSize();
-		const component = this[screen];
+		const component = this[this.buffer.screen];
 		component.setSize();
 		component.moveBuffers();
 	}
@@ -79,7 +79,7 @@ const Display = function() {
 	this.endAnimation = function(x, y) {
 		const seed = coordinateSeed(x, y);
 		const timeouts = animations.get(seed);
-		for (const timeoutheh of timeouts) clearTimeout(timeoutheh);
+		for (const timeout of timeouts) clearTimeout(timeout);
 		animations.delete(seed);
 		if (animations.size == 0) this.animating = false;
 	}
@@ -127,9 +127,12 @@ const Display = function() {
 		}, duration));
 	}
 	this.stopAnimating = function(buffer = false) {
-		animations.forEach(timeout => clearTimeout(timeout));
+		animations.forEach(timeouts => timeouts.forEach(timeout => clearTimeout(timeout)));
 		this.animating = false;
-		if (buffer) buffer.clear();
+		this.debug('clearing');
+		if (buffer) {
+			buffer.clear();
+		}
 	}
 
 	this.drawLoadingDot = function(buffer, x, y, draw, color = 'red') {
